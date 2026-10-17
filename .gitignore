@@ -1,0 +1,37 @@
+# Local toolchains and build outputs
+.tools/
+/blindspot
+/blindspot.exe
+/dist/
+*.test
+/coverage.out
+
+# Mutation reports contain source snapshots, logs and local paths
+.blindspot/
+**/.blindspot/
+**/out/
+**/cache/
+**/broadcast/
+*.log
+/report.html
+/run.json
+/result.json
+
+# Local credentials and environment configuration
+.env
+.env.*
+.netrc
+.npmrc
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+
+# Machine and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

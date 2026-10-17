@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>blindspot</title>
+<style>
+:root{--fg:#1f2328;--muted:#656d76;--border:#d0d7de;--subtle:#f6f8fa;--blue:#0969da;--red:#cf222e;--red-bg:#ffebe9;--green-bg:#dafbe1;--amber-bg:#fff8c5;--mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:1180px;margin:auto;padding:28px 24px 48px}button,input{font:inherit;color:inherit}button,summary{cursor:pointer}button{padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:var(--subtle);font-size:12px}button:hover{background:#eef1f4}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:3px}a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}code,pre{font-family:var(--mono)}pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}h1,h2,h3,p{margin:0}h1{font-size:16px;font-weight:400}h1 strong{font-weight:650}h2{font-size:20px;font-weight:600;margin:20px 0 4px}.header{display:flex;justify-content:space-between;gap:16px;padding-bottom:16px;border-bottom:1px solid var(--border)}.muted{color:var(--muted)}.state{font-size:12px;white-space:nowrap}.summary{font-size:13px;color:var(--muted)}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0 16px}.tabs{display:flex;gap:4px;flex-wrap:wrap}.tab{border-color:transparent;background:transparent;font-size:13px;padding:6px 10px}.tab[aria-pressed=true]{border-color:var(--border);background:var(--subtle);font-weight:600}.tab-count{font-size:12px;color:var(--muted);margin-left:6px}input[type=search]{width:250px;max-width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:13px}.file{border:1px solid var(--border);border-radius:5px;margin-bottom:16px;overflow:hidden}.file>summary{background:var(--subtle);padding:10px 14px;font:600 13px/1.5 var(--mono);overflow-wrap:anywhere}.file>summary .muted{font:12px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-weight:400;margin-left:12px}.file[open]>summary{border-bottom:1px solid var(--border)}.line-group+.line-group{border-top:1px solid var(--border)}.line-heading{display:flex;gap:12px;align-items:center;padding:10px 14px 7px;font-size:12px}.line-heading a{font-family:var(--mono)}.line-heading .editor{margin-left:auto;font-family:inherit;color:var(--muted)}.source{overflow:auto;font:12px/22px var(--mono);padding:2px 0 6px}.source-row{display:flex;min-width:max-content;white-space:pre;tab-size:4}.source-row.marked{background:var(--red-bg)}.source-row.pending{background:var(--amber-bg)}.line-no{color:var(--muted);text-align:right;min-width:56px;padding:0 16px;user-select:none}.source-text{padding-right:20px}.mutations{padding:7px 14px 11px;font-size:12px;color:var(--muted)}.mutations>summary{width:fit-content}.mutation{border:1px solid var(--border);border-radius:4px;margin-top:10px;overflow:hidden;color:var(--fg)}.mutation-head{display:flex;gap:12px;align-items:center;padding:7px 10px;font-size:12px;background:var(--subtle)}.mutation-head button{margin-left:auto}.diff{overflow:auto;font:12px/22px var(--mono)}.diff-row{display:flex;white-space:pre;min-width:max-content;padding:2px 12px}.diff-sign{min-width:24px;user-select:none}.removed{background:var(--red-bg)}.added{background:var(--green-bg)}.evidence{font-size:12px;padding:8px 10px;color:var(--muted)}.evidence pre{margin-top:10px;font-size:12px;color:var(--fg);max-height:320px;overflow:auto}.full-source{padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}.full-source .source{margin:10px -14px -8px;color:var(--fg);max-height:500px}.notice{border-left:3px solid #bf8700;padding:9px 12px;background:#fff8c5;margin:16px 0;font-size:13px}.notice details{margin-top:6px}.notice pre{margin-top:8px;font-size:12px;max-height:240px;overflow:auto}.empty{border:1px solid var(--border);border-radius:5px;padding:28px 16px;color:var(--muted);font-size:13px}.footnote{font-size:12px;color:var(--muted);margin:16px 0}.run-details{font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px}.run-details table{border-collapse:collapse;margin:12px 0;max-width:100%}.run-details th,.run-details td{padding:4px 20px 4px 0;text-align:left;vertical-align:top;overflow-wrap:anywhere}.run-details th{font-weight:500;white-space:nowrap}.run-details td{font-family:var(--mono);color:var(--fg)}.run-details pre{max-height:220px;overflow:auto;margin-top:8px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}[hidden]{display:none!important}
+@media(max-width:650px){main{padding:18px 12px 32px}.toolbar{align-items:stretch;flex-direction:column;gap:10px}input[type=search]{width:100%}.header{flex-wrap:wrap;gap:4px}h2{font-size:18px}.line-heading{gap:8px}.file>summary .muted{display:block;margin:3px 0 0 15px}.mutation-head{flex-wrap:wrap}.source{font-size:11px}.line-no{min-width:44px;padding:0 12px}}
+</style>
+</head>
+<body>
+<main>
+<header class="header"><h1><strong>blindspot</strong> <span class="muted">/</span> <span id="project-name"></span></h1><span id="run-state" class="state muted"></span></header>
+<h2 id="headline"></h2>
+<p id="summary" class="summary"></p>
+<div id="issues"></div>
+<div id="toolbar" class="toolbar">
+<div class="tabs" role="group" aria-label="Filter mutations">
+<button class="tab" data-filter="survived">Survived<span class="tab-count" id="survived-count"></span></button>
+<button class="tab" data-filter="unresolved">Unresolved<span class="tab-count" id="unresolved-count"></span></button>
+<button class="tab" data-filter="all">All<span class="tab-count" id="all-count"></span></button>
+</div>
+<label class="sr-only" for="search">Filter files</label><input id="search" type="search" placeholder="Filter files…" autocomplete="off">
+</div>
+<div id="results" aria-label="Mutation results"></div>
+<p id="footnote" class="footnote">Survived means your tests passed after the change. Some mutations preserve behavior; unassessed lines are not proven covered.</p>
+<details id="run-details" class="run-details"><summary>Run details</summary><div id="run-info"></div></details>
+<div id="clipboard-status" class="sr-only" role="status"></div>
+</main>
+<script id="run-data" type="application/json">__RUN_DATA__</script>
+<script>
+'use strict';
+const run=JSON.parse(document.getElementById('run-data').textContent);
+const $=id=>document.getElementById(id);
+const node=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;};
+const s=run.summary, baselineOK=run.baseline.status==='passed';
+const isUnresolved=m=>['error','timeout','not-run'].includes(m.status);
+const countUnresolved=s.timeout+s.error+s.not_run;
+const labels={survived:'Survived',caught:'Caught',invalid:'Invalid',timeout:'Timed out',error:'Error','not-run':'Not run'};
+const duration=ms=>ms<1000?ms+'ms':ms<60000?(ms/1000).toFixed(1)+'s':Math.floor(ms/60000)+'m '+Math.floor(ms%60000/1000)+'s';
+const plural=(n,one,many=one+'s')=>n+' '+(n===1?one:many);
+const quote=text=>"'"+String(text).replaceAll("'","'\\''")+"'";
+const lineID=(file,line)=>'line-'+encodeURIComponent(file)+'-'+line;
+const byFile=new Map();
+for(const m of run.mutations){if(!byFile.has(m.file))byFile.set(m.file,[]);byFile.get(m.file).push(m);}
+const params=new URLSearchParams(location.hash.slice(1));
+let filter=s.survived?'survived':countUnresolved?'unresolved':'survived', query='';
+if(['survived','unresolved','all'].includes(params.get('filter')))filter=params.get('filter');
+const requestedFile=params.get('file'), requestedLine=Number(params.get('line'));
+if(requestedFile&&requestedLine&&!(byFile.get(requestedFile)||[]).some(m=>m.line===requestedLine&&matches(m)))filter='all';
+function matches(m){return filter==='all'||(filter==='survived'?m.status==='survived':isUnresolved(m));}
+const state=run.state==='completed'?'Complete':run.state==='running'?'In progress':run.state.charAt(0).toUpperCase()+run.state.slice(1);
+$('project-name').textContent=run.project.split('/').filter(Boolean).at(-1)||'project';
+document.title='blindspot / '+$('project-name').textContent;
+$('run-state').textContent=state+' · '+duration(run.duration_ms);
+$('headline').textContent=baselineOK?(s.gap_lines?plural(s.gap_lines,'line')+' with surviving mutations':'No surviving mutations'+(run.state==='completed'?' in this run':' so far')):'No mutation results';
+$('summary').textContent=baselineOK?s.survived+' survived · '+s.caught+' caught · '+s.invalid+' invalid'+(countUnresolved?' · '+countUnresolved+' unresolved':'')+(run.limit?' · sample of up to '+run.limit:''):'Baseline '+run.baseline.status+'. Mutation testing did not start.';
+$('survived-count').textContent=s.survived;
+$('unresolved-count').textContent=countUnresolved;
+$('all-count').textContent=run.mutations.length;
+if(!countUnresolved)document.querySelector('[data-filter="unresolved"]').hidden=true;
+if(!baselineOK){$('toolbar').hidden=true;$('results').hidden=true;$('footnote').hidden=true;}
+if(run.errors?.length||!baselineOK||(run.state!=='completed'&&run.state!=='running')){
+  const box=node('div','notice');
+  box.append(node('p','',!baselineOK?(run.baseline.reason||'The baseline did not complete. No mutation coverage was evaluated.'):run.state==='running'?'This report is a partial snapshot.':state+' run. Results cover only the mutations that finished.'));
+  if(run.errors?.length){const detail=node('details'),title=node('summary','','Details');detail.append(title);run.errors.forEach(e=>detail.append(node('pre','',e)));box.append(detail);}
+  $('issues').append(box);
+}
+function sourceBlock(file,first,last,marked,status){
+  const box=node('div','source'),lines=(run.files[file]||'').split('\n');
+  for(let n=Math.max(1,first);n<=Math.min(last,lines.length);n++){
+    const row=node('div','source-row'+(n===marked?(status==='survived'?' marked':status==='unresolved'?' pending':''):''));
+    row.append(node('span','line-no',String(n)),node('span','source-text',lines[n-1]||' '));box.append(row);
+  }
+  return box;
+}
+function editorURL(file,line){return 'vscode://file/'+(run.project+'/'+file).replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/')+':'+line;}
+async function copyReplay(button,m){
+  const text=quote(run.executable||'blindspot')+' replay '+m.id+' --project '+quote(run.project)+' --run '+quote(run.id);
+  let ok=false;
+  try{await navigator.clipboard.writeText(text);ok=true;}catch{
+    const area=node('textarea','',text);document.body.append(area);area.select();try{ok=document.execCommand('copy');}catch{ok=false;}finally{area.remove();}
+  }
+  button.textContent=ok?'Copied':'Copy failed';$('clipboard-status').textContent=ok?'Replay command copied':'Could not copy replay command';
+  if(!ok){const fallback=node('pre','',text);button.closest('.mutation').append(fallback);}
+  setTimeout(()=>button.textContent='Copy replay',1800);
+}
+function mutationView(m){
+  const el=node('article','mutation'),head=node('div','mutation-head');
+  head.append(node('span','',labels[m.status]||m.status),node('span','muted',m.reason||''));
+  const replay=node('button','','Copy replay');replay.onclick=()=>copyReplay(replay,m);head.append(replay);el.append(head);
+  const diff=node('div','diff');
+  for(const [sign,text,cls] of [['−',m.original,'removed'],['+',m.replacement,'added']]){
+    const row=node('div','diff-row '+cls);row.append(node('span','diff-sign',sign),node('span','',text||'(empty)'));diff.append(row);
+  }
+  el.append(diff);
+  const evidence=node('details','evidence');evidence.append(node('summary','','Full diff and logs'),node('pre','',m.id+' · '+m.operator));
+  if(m.failures?.length)evidence.append(node('pre','',m.failures.map(t=>t.name+(t.reason?' — '+t.reason:'')).join('\n')));
+  if(m.diff)evidence.append(node('pre','',m.diff));
+  if(m.log)evidence.append(node('pre','',m.log));
+  el.append(evidence);return el;
+}
+function render(){
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.filter===filter)));
+  const results=$('results');results.replaceChildren();
+  let visible=0;
+  for(const file of [...byFile.keys()].sort()){
+    if(!file.toLowerCase().includes(query))continue;
+    const ms=byFile.get(file).filter(matches);if(!ms.length)continue;
+    const lines=new Map();for(const m of ms){if(!lines.has(m.line))lines.set(m.line,[]);lines.get(m.line).push(m);}
+    const section=node('details','file');section.open=true;
+    const heading=node('summary');heading.append(node('span','',file),node('span','muted',plural(lines.size,'line')+' · '+plural(ms.length,'mutation')));section.append(heading);
+    for(const [line,mutants] of [...lines].sort((a,b)=>a[0]-b[0])){
+      const group=node('section','line-group');group.id=lineID(file,line);
+      const top=node('div','line-heading'),link=node('a','','L'+line);
+      link.href='#'+new URLSearchParams({file,line:String(line),filter});link.title='Link to '+file+':'+line;
+      link.onclick=e=>{e.preventDefault();history.replaceState(null,'',link.href);};
+      const survived=mutants.filter(m=>m.status==='survived').length,pending=mutants.filter(isUnresolved).length;
+      top.append(link,node('span','muted',survived?survived+' survived':pending?pending+' unresolved':plural(mutants.length,'mutation')));
+      const editor=node('a','editor','Open in editor');editor.href=editorURL(file,line);top.append(editor);group.append(top);
+      group.append(sourceBlock(file,line-1,line+1,line,survived?'survived':pending?'unresolved':''));
+      const changes=node('details','mutations');changes.append(node('summary','','Show '+plural(mutants.length,'mutation')));
+      let loaded=false;changes.ontoggle=()=>{if(changes.open&&!loaded){loaded=true;const rank={survived:0,error:1,timeout:1,'not-run':1,caught:2,invalid:3};for(const m of [...mutants].sort((a,b)=>(rank[a.status]??4)-(rank[b.status]??4)))changes.append(mutationView(m));}};
+      group.append(changes);section.append(group);
+    }
+    const full=node('details','full-source');full.append(node('summary','','View full source'));
+    let sourceLoaded=false;full.ontoggle=()=>{if(full.open&&!sourceLoaded){sourceLoaded=true;full.append(sourceBlock(file,1,(run.files[file]||'').split('\n').length));}};
+    section.append(full);results.append(section);visible++;
+  }
+  if(!visible){const text=query?'No files match “'+query+'”.':filter==='survived'?(run.state==='completed'?'No surviving mutations in the evaluated scope.':'No surviving mutations among the completed results.')+' Select All to inspect the other results.':filter==='unresolved'?'No unresolved mutations.':'No mutations were generated in this scope.';results.append(node('p','empty',text));}
+}
+const table=node('table');
+const rows=[['Run',run.id],['Project',run.project],['Scope',run.limit?'Sample of up to '+run.limit+' mutants':'All generated mutations in selected files'],['Baseline',run.baseline.status+' · '+run.baseline.tests+' tests'],['Profile',run.profile],['Seed',String(run.seed)],['Started',new Date(run.started_at).toLocaleString()],['Elapsed',duration(run.duration_ms)]];
+if(run.baseline.build_duration_ms)rows.splice(4,0,['Baseline build',duration(run.baseline.build_duration_ms)],['Baseline tests',duration(run.baseline.test_duration_ms)]);
+for(const [key,value] of rows){const tr=node('tr');tr.append(node('th','',key),node('td','',value));table.append(tr);}
+$('run-info').append(table,node('p','','Source files in scope'),node('pre','',Object.keys(run.files).sort().join('\n')));
+$('search').oninput=e=>{query=e.target.value.trim().toLowerCase();render();};
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;history.replaceState(null,'','#'+new URLSearchParams({filter}));render();});
+document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(e.target.tagName)) {e.preventDefault();$('search').focus();}});
+if(baselineOK){render();if(requestedFile&&requestedLine)requestAnimationFrame(()=>$(lineID(requestedFile,requestedLine))?.scrollIntoView({block:'nearest'}));}
+</script>
+</body>
+</html>
