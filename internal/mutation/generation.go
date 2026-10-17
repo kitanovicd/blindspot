@@ -12,15 +12,17 @@ import (
 	"time"
 
 	"github.com/kitanovicd/blindspot/internal/report"
+	"github.com/kitanovicd/blindspot/internal/terminal"
 )
 
 // generateSources collects unique mutations while keeping progress output on
-// the caller's goroutine. Slow files get periodic updates; fast files stay quiet.
+// the caller's goroutine. Each file gets a result and slow files get live updates.
 func (r *Runner) generateSources(ctx context.Context, root, snapshot, runDir string, files []string, gambit, solc string, cfg foundryConfig, opts Options) ([]report.Mutation, []string) {
 	started := time.Now()
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
-	r.logf("Generate  Finding mutations with Gambit in %s…", sourceFileCount(len(files)))
+	r.section("Generate")
+	r.logf("  Finding mutations with Gambit in %s…", sourceFileCount(len(files)))
 	type result struct {
 		mutations []report.Mutation
 		err       error
@@ -28,12 +30,14 @@ func (r *Runner) generateSources(ctx context.Context, root, snapshot, runDir str
 	mutations := []report.Mutation{}
 	var failures []string
 	seen := map[string]bool{}
-	processed, empty := 0, 0
 filesLoop:
-	for _, file := range files {
+	for i, file := range files {
 		if ctx.Err() != nil {
 			break
 		}
+		fmt.Fprintf(r.progress, "\n    %s %s\n", r.style.Text(terminal.Muted, fmt.Sprintf("[%d/%d]", i+1, len(files))), r.style.Text(terminal.Emphasis, file))
+		fileStarted := time.Now()
+		ticker.Reset(15 * time.Second)
 		done := make(chan result, 1)
 		go func() {
 			mutants, err := generate(ctx, root, snapshot, runDir, file, gambit, solc, cfg, opts)
@@ -42,43 +46,42 @@ filesLoop:
 		for {
 			select {
 			case generated := <-done:
-				processed++
 				if generated.err != nil {
 					failures = append(failures, generated.err.Error())
 					if ctx.Err() == nil {
-						r.logf("Generate  Could not process %s; see the report for details", file)
+						r.logf("    %s", r.style.Text(terminal.Red, "Generation failed. See the report for details."))
+					} else {
+						r.logf("    %s", r.style.Text(terminal.Yellow, "Interrupted"))
 					}
 				} else {
-					if len(generated.mutations) == 0 {
-						empty++
-					}
+					before := len(mutations)
 					for _, m := range generated.mutations {
 						if !seen[m.ID] {
 							mutations = append(mutations, m)
 							seen[m.ID] = true
 						}
 					}
+					if found := len(mutations) - before; found > 0 {
+						r.logf("    Mutations found: %s", r.style.Text(terminal.Cyan, fmt.Sprint(found)))
+					} else {
+						r.logf("    %s", r.style.Text(terminal.Muted, "No applicable mutations"))
+					}
 				}
 				continue filesLoop
 			case <-ticker.C:
-				r.logf("Generate  %d/%d files processed · %d mutations found · scanning %s · %s elapsed", processed, len(files), len(mutations), file, time.Since(started).Round(time.Second))
+				r.logf("    %s", r.style.Text(terminal.Muted, fmt.Sprintf("Still generating · %s elapsed", time.Since(fileStarted).Round(time.Second))))
 			}
 		}
 	}
-	parts := []string{
-		fmt.Sprintf("%d/%d files processed", processed, len(files)),
-		fmt.Sprintf("%d mutations found", len(mutations)),
-	}
-	if empty > 0 {
-		parts = append(parts, sourceFileCount(empty)+" had no applicable mutations")
-	}
+	fmt.Fprintln(r.progress)
+	r.logf("  Total mutations: %s", r.style.Text(terminal.Cyan, fmt.Sprint(len(mutations))))
+	r.logf("  %s", r.style.Text(terminal.Muted, fmt.Sprintf("Generation time: %s", time.Since(started).Round(time.Second))))
 	if len(failures) > 0 {
-		parts = append(parts, sourceFileCount(len(failures))+" could not be processed")
+		r.logf("  %s", r.style.Text(terminal.Red, "Could not process: "+sourceFileCount(len(failures))))
 	}
 	if ctx.Err() != nil {
-		parts = append(parts, "interrupted")
+		r.logf("  %s", r.style.Text(terminal.Yellow, "Generation interrupted"))
 	}
-	r.logf("Generate  %s · %s elapsed", strings.Join(parts, " · "), time.Since(started).Round(time.Second))
 	return mutations, failures
 }
 

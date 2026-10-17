@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/kitanovicd/blindspot/internal/report"
+	"github.com/kitanovicd/blindspot/internal/terminal"
 )
 
 // Forge's JSON output is buffered, so report elapsed time independently of stdout.
 func (r *Runner) progressStep(label string, limit time.Duration, invoke func() processResult) processResult {
-	r.logf("%s (limit %s)…", label, limit)
+	r.logf("  %s (limit %s)…", label, limit)
 	started := time.Now()
 	done := make(chan processResult, 1)
 	go func() { done <- invoke() }()
@@ -23,12 +24,13 @@ func (r *Runner) progressStep(label string, limit time.Duration, invoke func() p
 		case result := <-done:
 			return result
 		case <-tick.C:
-			r.logf("%s · %s elapsed / %s limit", label, time.Since(started).Round(time.Second), limit)
+			r.logf("  %s · %s elapsed / %s limit", label, time.Since(started).Round(time.Second), limit)
 		}
 	}
 }
 
 func (r *Runner) runBaseline(ctx context.Context, worker, root, solc string, cfg foundryConfig, opts Options, logs string) (report.Baseline, error) {
+	r.section("Baseline")
 	b := report.Baseline{Phase: "build"}
 	stop := func(status, reason string, result processResult) (report.Baseline, error) {
 		b.Status, b.Reason, b.Log = status, reason, shortLog(combined(result))
@@ -40,7 +42,7 @@ func (r *Runner) runBaseline(ctx context.Context, worker, root, solc string, cfg
 		return stop("error", err.Error(), processResult{})
 	}
 	buildLimit := time.Duration(opts.buildTimeoutSeconds()) * time.Second
-	build := r.progressStep("Baseline  compiling original project", buildLimit, func() processResult {
+	build := r.progressStep("Compiling original project", buildLimit, func() processResult {
 		return execute(ctx, "forge", args, worker, filepath.Join(logs, "build"), buildLimit, opts.Profile, workerEnv(cfg, root, worker))
 	})
 	b.BuildDurationMS = build.DurationMS
@@ -53,14 +55,14 @@ func (r *Runner) runBaseline(ctx context.Context, worker, root, solc string, cfg
 	if build.Code != 0 || build.Err != nil {
 		return stop("error", "Baseline compilation failed; tests have not run", build)
 	}
-	r.logf("Baseline  compilation finished in %s", time.Duration(build.DurationMS)*time.Millisecond)
+	r.logf("  %s in %s", r.style.Text(terminal.Green, "Compilation finished"), time.Duration(build.DurationMS)*time.Millisecond)
 	b.Phase = "test"
 	args, err = forgeArgs("test", worker, root, solc, cfg, opts.Seed)
 	if err != nil {
 		return stop("error", err.Error(), processResult{})
 	}
 	testLimit := time.Duration(opts.Timeout) * time.Second
-	result := r.progressStep("Baseline  running original tests", testLimit, func() processResult {
+	result := r.progressStep("Running original tests", testLimit, func() processResult {
 		return execute(ctx, "forge", args, worker, filepath.Join(logs, "test"), testLimit, opts.Profile, workerEnv(cfg, root, worker))
 	})
 	b.TestDurationMS = result.DurationMS
@@ -83,6 +85,6 @@ func (r *Runner) runBaseline(ctx context.Context, worker, root, solc string, cfg
 	}
 	b.Status = "passed"
 	b.DurationMS = b.BuildDurationMS + b.TestDurationMS
-	r.logf("Baseline  %d tests passed in %s", b.Tests, time.Duration(b.TestDurationMS)*time.Millisecond)
+	r.logf("  %s in %s", r.style.Count(terminal.Green, b.Tests, "tests passed"), time.Duration(b.TestDurationMS)*time.Millisecond)
 	return b, nil
 }

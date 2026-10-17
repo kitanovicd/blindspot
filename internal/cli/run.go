@@ -10,6 +10,7 @@ import (
 
 	"github.com/kitanovicd/blindspot/internal/mutation"
 	"github.com/kitanovicd/blindspot/internal/report"
+	"github.com/kitanovicd/blindspot/internal/terminal"
 )
 
 func (a *app) run(ctx context.Context, args []string) int {
@@ -42,7 +43,7 @@ func (a *app) run(ctx context.Context, args []string) int {
 	if err := opts.Validate(); err != nil {
 		return a.fail(err)
 	}
-	fmt.Fprint(a.errOut, "\n  BLINDSPOT  /  mutation coverage\n\n")
+	fmt.Fprintf(a.errOut, "\n  %s  /  mutation coverage\n\n", a.errStyle.Text(terminal.Heading, "BLINDSPOT"))
 	run, dir, err := a.runner.Run(ctx, opts)
 	if run != nil {
 		if jsonOut {

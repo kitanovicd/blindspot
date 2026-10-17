@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kitanovicd/blindspot/internal/report"
+	"github.com/kitanovicd/blindspot/internal/terminal"
 )
 
 // startEvaluationProgress reports aggregate results on a timer, even when no
@@ -18,17 +19,17 @@ func (r *Runner) startEvaluationProgress(total int, snapshot func() report.Summa
 		unresolved := s.Timeout + s.Error
 		completed := s.Caught + s.Survived + s.Invalid + unresolved
 		parts := []string{
-			fmt.Sprintf("Progress  %d/%d completed", completed, total),
-			fmt.Sprintf("%d caught", s.Caught),
-			fmt.Sprintf("%d survived", s.Survived),
+			r.style.Text(terminal.Cyan, fmt.Sprintf("Progress  %d/%d completed", completed, total)),
+			r.style.Count(terminal.Green, s.Caught, "caught"),
+			r.style.Count(terminal.Yellow, s.Survived, "survived"),
 		}
 		if s.Invalid > 0 {
-			parts = append(parts, fmt.Sprintf("%d invalid", s.Invalid))
+			parts = append(parts, r.style.Count(terminal.Muted, s.Invalid, "invalid"))
 		}
 		if unresolved > 0 {
-			parts = append(parts, fmt.Sprintf("%d unresolved", unresolved))
+			parts = append(parts, r.style.Count(terminal.Yellow, unresolved, "unresolved"))
 		}
-		r.logf("%s · %s elapsed", strings.Join(parts, " · "), time.Since(started).Round(time.Second))
+		r.logf("  %s · %s", strings.Join(parts, " · "), r.style.Text(terminal.Muted, fmt.Sprintf("%s elapsed", time.Since(started).Round(time.Second))))
 	}
 	done := make(chan struct{})
 	stopped := make(chan struct{})

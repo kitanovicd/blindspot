@@ -91,6 +91,7 @@ main.go               Entry point and signal handling
 internal/cli/         Commands, flags, and terminal output
 internal/mutation/    Generation, execution, snapshots, and replay
 internal/report/      Result model, embedded HTML, and local server
+internal/terminal/    Terminal detection and optional colors
 internal/toolchain/   Gambit installation and compiler discovery
 docs/                 Usage reference
 ```

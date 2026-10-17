@@ -6,14 +6,16 @@ import (
 	"io"
 
 	"github.com/kitanovicd/blindspot/internal/mutation"
+	"github.com/kitanovicd/blindspot/internal/terminal"
 	"github.com/kitanovicd/blindspot/internal/toolchain"
 )
 
 const version = "0.1.0"
 
 type app struct {
-	out, errOut io.Writer
-	runner      *mutation.Runner
+	out, errOut        io.Writer
+	outStyle, errStyle terminal.Style
+	runner             *mutation.Runner
 }
 
 // Run executes one CLI invocation and returns its process exit code.
@@ -24,7 +26,11 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if stderr == nil {
 		stderr = io.Discard
 	}
-	a := &app{out: stdout, errOut: stderr, runner: mutation.NewRunner(stderr)}
+	a := &app{
+		out: stdout, errOut: stderr,
+		outStyle: terminal.For(stdout), errStyle: terminal.For(stderr),
+		runner: mutation.NewRunner(stderr),
+	}
 	if len(args) == 0 {
 		return a.text(help)
 	}
@@ -54,7 +60,10 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-func (a *app) fail(err error) int { fmt.Fprintln(a.errOut, "\n  Error:", err); return 1 }
+func (a *app) fail(err error) int {
+	fmt.Fprintln(a.errOut, "\n  "+a.errStyle.Text(terminal.Red, "Error:"), err)
+	return 1
+}
 func (a *app) text(text string) int {
 	if _, err := io.WriteString(a.out, text); err != nil {
 		return a.fail(fmt.Errorf("write output: %w", err))

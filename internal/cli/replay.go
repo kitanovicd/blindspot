@@ -33,7 +33,7 @@ func (a *app) replay(ctx context.Context, args []string) int {
 	if err != nil {
 		return a.fail(err)
 	}
-	fmt.Fprintf(a.out, "\n  %s  %s:%d\n  %s → %s\n  %s\n", strings.ToUpper(m.Status), m.File, m.Line, m.Original, m.Replacement, m.Reason)
+	fmt.Fprintf(a.out, "\n  %s  %s:%d\n  %s → %s\n  %s\n", a.outStyle.Text(statusColor(m.Status), strings.ToUpper(m.Status)), m.File, m.Line, m.Original, m.Replacement, m.Reason)
 	if m.Status == "error" || m.Status == "timeout" || m.Status == "not-run" {
 		return 3
 	}

@@ -14,23 +14,31 @@ import (
 	"time"
 
 	"github.com/kitanovicd/blindspot/internal/report"
+	"github.com/kitanovicd/blindspot/internal/terminal"
 	"github.com/kitanovicd/blindspot/internal/toolchain"
 )
 
 // Runner evaluates mutations in private project snapshots. Progress is written
 // to the supplied writer; completed results are returned independently of CLI output.
-type Runner struct{ progress io.Writer }
+type Runner struct {
+	progress io.Writer
+	style    terminal.Style
+}
 
 // NewRunner constructs a runner. A nil writer disables progress output.
 func NewRunner(progress io.Writer) *Runner {
 	if progress == nil {
 		progress = io.Discard
 	}
-	return &Runner{progress: progress}
+	return &Runner{progress: progress, style: terminal.For(progress)}
 }
 
 func (r *Runner) logf(format string, args ...any) {
 	fmt.Fprintf(r.progress, "  "+format+"\n", args...)
+}
+
+func (r *Runner) section(title string) {
+	fmt.Fprintf(r.progress, "\n  %s\n", r.style.Text(terminal.Heading, title))
 }
 
 // Run executes the baseline and selected mutations, persisting results along the
@@ -57,7 +65,7 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 		return nil, runDir, fmt.Errorf("FFI is enabled in profile %q. Re-run with --allow-ffi to permit its subprocesses, or use a profile with ffi = false. FFI commands can access files and services outside the project copies", opts.Profile)
 	}
 	if cfg.FFI {
-		r.logf("FFI      enabled (--allow-ffi); subprocesses are not sandboxed")
+		r.logf("%s", r.style.Text(terminal.Yellow, "FFI      enabled (--allow-ffi); subprocesses are not sandboxed"))
 	}
 	gambit, err := toolchain.Locate(opts.Gambit, "gambit")
 	if err != nil {
@@ -104,7 +112,8 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	}
 	r.logf("Project  %s", root)
 	r.logf("Profile  %s · %d source file(s) · seed %d", opts.Profile, len(files), opts.Seed)
-	r.logf("Copying project into an isolated snapshot…")
+	r.section("Prepare")
+	r.logf("  Copying project into an isolated snapshot…")
 	snapshot := filepath.Join(runDir, "snapshot")
 	excludes := []string{cfg.Out, cfg.CachePath, ".blindspot-build"}
 	if err = copyTree(root, snapshot, excludes); err != nil {
@@ -167,7 +176,8 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 		return run, runDir, err
 	}
 	workerCount := min(opts.Jobs, len(run.Mutations))
-	r.logf("Evaluate  %d mutations · %d workers · full test suite", len(run.Mutations), workerCount)
+	r.section("Evaluate")
+	r.logf("  %d mutations · %d workers · full test suite", len(run.Mutations), workerCount)
 	workers, err := prepareWorkers(snapshot, runDir, workerCount)
 	if err != nil {
 		run.State = "incomplete"
