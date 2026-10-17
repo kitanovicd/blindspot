@@ -10,8 +10,6 @@ import (
 	"github.com/kitanovicd/blindspot/internal/toolchain"
 )
 
-const version = "0.1.0"
-
 type app struct {
 	out, errOut        io.Writer
 	outStyle, errStyle terminal.Style
@@ -38,7 +36,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case "help", "--help", "-h":
 		return a.text(help)
 	case "version", "--version":
-		return a.text("blindspot " + version + " (Go · Gambit v1.0.6)\n")
+		return a.text("blindspot " + buildVersion() + " (Go · Gambit v1.0.6)\n")
 	case "run":
 		return a.run(ctx, args[1:])
 	case "report":

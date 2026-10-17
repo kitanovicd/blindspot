@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// Locate resolves an explicit tool, PATH entry, or executable-local installation.
+// Locate resolves an explicit tool, managed installation, PATH, or local tool.
 func Locate(explicit, name string) (string, error) {
 	if explicit != "" {
 		p, err := filepath.Abs(explicit)
@@ -23,6 +23,13 @@ func Locate(explicit, name string) (string, error) {
 			return p, nil
 		}
 		return "", fmt.Errorf("executable not found: %s", explicit)
+	}
+	if name == "gambit" {
+		if p, err := gambitPath(); err == nil {
+			if p, err := exec.LookPath(p); err == nil {
+				return p, nil
+			}
+		}
 	}
 	if p, err := exec.LookPath(name); err == nil {
 		return p, nil

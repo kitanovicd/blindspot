@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// InstallGambit verifies and installs the pinned release beside the executable.
+// InstallGambit verifies and installs the pinned release in a user-owned directory.
 func InstallGambit(ctx context.Context, output, progress io.Writer) error {
 	var asset, checksum string
 	switch runtime.GOOS {
@@ -29,16 +29,18 @@ func InstallGambit(ctx context.Context, output, progress io.Writer) error {
 	default:
 		return fmt.Errorf("use macOS, Linux x86-64, or WSL for this release")
 	}
-	exe, err := os.Executable()
+	file, err := gambitPath()
 	if err != nil {
 		return err
 	}
-	dir := filepath.Join(filepath.Dir(exe), ".tools")
+	dir := filepath.Dir(file)
 	if err = os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	file := filepath.Join(dir, "gambit")
 	if data, err := os.ReadFile(file); err == nil && digest(data) == checksum {
+		if err := os.Chmod(file, 0755); err != nil {
+			return err
+		}
 		fmt.Fprintln(output, "Gambit v1.0.6 is installed and checksum verified:", file)
 		return nil
 	}
@@ -64,14 +66,38 @@ func InstallGambit(ctx context.Context, output, progress io.Writer) error {
 	if digest(data) != checksum {
 		return fmt.Errorf("Gambit checksum mismatch; installation refused")
 	}
-	if err = os.WriteFile(file+".tmp", data, 0755); err != nil {
+	tmp, err := os.CreateTemp(dir, ".gambit-*")
+	if err != nil {
 		return err
 	}
-	if err = os.Rename(file+".tmp", file); err != nil {
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp.Name(), 0755); err != nil {
+		return err
+	}
+	if err = os.Rename(tmp.Name(), file); err != nil {
 		return err
 	}
 	fmt.Fprintln(output, "Gambit v1.0.6 installed and SHA-256 verified:", file)
 	return nil
+}
+
+func gambitPath() (string, error) {
+	dir := os.Getenv("BLINDSPOT_TOOLS_DIR")
+	if dir == "" {
+		cache, err := os.UserCacheDir()
+		if err != nil {
+			return "", fmt.Errorf("find user cache: %w; set BLINDSPOT_TOOLS_DIR to a writable directory", err)
+		}
+		dir = filepath.Join(cache, "blindspot", "tools")
+	}
+	return filepath.Abs(filepath.Join(dir, "gambit-v1.0.6", "gambit"))
 }
 
 func digest(data []byte) string { sum := sha256.Sum256(data); return hex.EncodeToString(sum[:]) }

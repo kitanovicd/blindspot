@@ -10,7 +10,7 @@ const help = `
     report                     Open the latest report (no server required)
     replay <mutation-id>       Re-test one mutation from the saved snapshot
     doctor                     Check Foundry, Gambit, and compiler setup
-    setup                      Install the pinned Gambit release locally
+    setup                      Download and verify Gambit in your user cache
     version                    Print the version
 
   Examples
@@ -43,5 +43,5 @@ const help = `
               3 incomplete evaluation · 130 interrupted
 
   Reports stay in PROJECT/.blindspot/. Source files are never replaced in-place.
-  Full docs and limitations: README.md
+  Full docs: https://github.com/kitanovicd/blindspot#readme
 `

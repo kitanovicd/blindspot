@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: false
+      - name: Check
+        run: |
+          go vet ./...
+          sh -n install.sh
+          sh -n scripts/release.sh
+      - name: Build release
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: sh scripts/release.sh "$VERSION"
+      - name: Verify Linux binary
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          stage=$(mktemp -d)
+          tar -xzf dist/blindspot_linux_amd64.tar.gz -C "$stage"
+          "$stage/blindspot" --version | grep -F "blindspot $VERSION "
+          "$stage/blindspot" --help
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          gh release create "$VERSION" dist/*.tar.gz dist/checksums.txt \
+            --verify-tag --title "Blindspot $VERSION" --generate-notes

@@ -2,21 +2,48 @@
 
 See the [README](../README.md) for installation and a first run.
 
+## Installation options
+
+The default installer uses `~/.local/bin` and never changes your shell configuration or requires sudo. Run it again to update, or choose a directory and version:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/kitanovicd/blindspot/main/install.sh | \
+  BLINDSPOT_INSTALL_DIR="$HOME/.local/bin" BLINDSPOT_VERSION=v0.1.0 sh
+```
+
+For a manual installation, download the archive for your platform and `checksums.txt` from the [release page](https://github.com/kitanovicd/blindspot/releases/latest). Verify the archive's SHA-256 hash, extract it, and put `blindspot` in a directory on your PATH.
+
+Go users can install without the shell installer:
+
+```sh
+go install github.com/kitanovicd/blindspot@latest
+export PATH="$(go env GOPATH)/bin:$PATH"
+blindspot setup
+```
+
+If you set `GOBIN`, use that directory on PATH instead. `blindspot version` prints the installed version.
+
+`blindspot setup` downloads Gambit v1.0.6 and checks its pinned SHA-256 hash. Managed tools live in `~/Library/Caches/blindspot/tools` on macOS and `$XDG_CACHE_HOME/blindspot/tools` (usually `~/.cache/blindspot/tools`) on Linux. Set `BLINDSPOT_TOOLS_DIR` to override this location; keep it set when running Blindspot. If you clear the cache, run `blindspot setup` again.
+
+An explicit `--gambit` takes precedence, followed by the managed installation, your PATH, and `.tools` beside the executable (for source checkouts). Foundry and Solidity compilers are installed separately; run `forge build` in your project before `blindspot doctor`.
+
+To uninstall the default installation, remove `~/.local/bin/blindspot` and, optionally, the Blindspot tools cache. Saved reports stay in each project's `.blindspot/` directory.
+
 ## Choose what to mutate
 
 ```sh
 # One file, at most 20 mutants
-./blindspot run --project /path/to/project src/Vault.sol --limit 20 --open
+blindspot run --project /path/to/project src/Vault.sol --limit 20 --open
 
 # One original source line
-./blindspot run --project /path/to/project src/Vault.sol --line 42 --all
+blindspot run --project /path/to/project src/Vault.sol --line 42 --all
 
 # A directory or quoted path pattern
-./blindspot run --project /path/to/project src/vaults/ --all
-./blindspot run --project /path/to/project 'src/*Vault.sol' --all
+blindspot run --project /path/to/project src/vaults/ --all
+blindspot run --project /path/to/project 'src/*Vault.sol' --all
 
 # Source files changed since a Git ref
-./blindspot run --project /path/to/project --changed origin/main
+blindspot run --project /path/to/project --changed origin/main
 ```
 
 Targets are relative to the project root. Quote patterns so your shell does not expand them first. `--line` requires one source file. `--changed` selects whole files, including staged, unstaged, and untracked changes; it still runs the full configured test suite.
@@ -47,7 +74,7 @@ The default sample is up to 50 mutants. `--limit N` sets a maximum; `--all` eval
 For a slow project, increase compilation and test limits independently:
 
 ```sh
-./blindspot run --project /path/to/project --limit 5 --build-timeout 1200 --timeout 300
+blindspot run --project /path/to/project --limit 5 --build-timeout 1200 --timeout 300
 ```
 
 The baseline compiles the original project, then runs its tests with a separate timer. Both phases must succeed before mutations are evaluated. A timeout or zero executed tests never counts as coverage. Logs are saved under `logs/baseline/build` and `logs/baseline/test` in the run directory.
@@ -62,14 +89,14 @@ Colors highlight headings, passed/caught results, survivors, and errors in a ter
 
 ```sh
 # Latest report, or a specific run
-./blindspot report --project /path/to/project
-./blindspot report --project /path/to/project --run RUN_ID
+blindspot report --project /path/to/project
+blindspot report --project /path/to/project --run RUN_ID
 
 # Export an offline HTML file
-./blindspot report --project /path/to/project --export report.html --no-open
+blindspot report --project /path/to/project --export report.html --no-open
 
 # Serve the report on localhost instead of opening a file
-./blindspot report --project /path/to/project --serve --port 8080
+blindspot report --project /path/to/project --serve --port 8080
 ```
 
 Reports are self-contained. The optional server binds only to `127.0.0.1` and serves the report, not the project directory. Reopening a report refreshes its layout with the current Blindspot version without rerunning tests.
@@ -90,7 +117,7 @@ Ctrl+C stops active processes and preserves completed results. Pending mutations
 ## Replay a mutation
 
 ```sh
-./blindspot replay MUTATION_ID --project /path/to/project --run RUN_ID
+blindspot replay MUTATION_ID --project /path/to/project --run RUN_ID
 ```
 
 Omit `--run` to use the latest run. Replay rechecks the original baseline, then evaluates the mutation using the saved source/tests, profile, seed, tool paths, and FFI permission. It does not evaluate your current working files.
@@ -100,7 +127,7 @@ The saved tools must remain available. Environment variables and RPC responses a
 ## CI
 
 ```sh
-./blindspot run --project /path/to/project --all --fail-on-survivors --json > result.json
+blindspot run --project /path/to/project --all --fail-on-survivors --json > result.json
 ```
 
 | Exit code | Meaning |
