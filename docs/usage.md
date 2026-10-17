@@ -4,7 +4,9 @@ See the [README](../README.md) for installation and a first run.
 
 ## Installation options
 
-The default installer uses `~/.local/bin` and never changes your shell configuration or requires sudo. Run it again to update, or choose a directory and version:
+With Homebrew, use `brew install kitanovicd/tap/blindspot`, then `blindspot setup`. Homebrew installs the binary on your PATH and verifies its release checksum. Update with `brew update && brew upgrade blindspot`; remove it with `brew uninstall blindspot`. Uninstalling keeps saved project reports and the Gambit cache.
+
+The standalone installer uses `~/.local/bin` and never changes your shell configuration or requires sudo. Run it again to update, or choose a directory and version:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kitanovicd/blindspot/main/install.sh | \

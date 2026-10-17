@@ -8,13 +8,22 @@ Blindspot changes your Solidity code one mutation at a time, runs your existing 
 
 Requires **[Foundry](https://getfoundry.sh/)** (`forge` on your PATH). No Go installation is needed.
 
+With Homebrew:
+
+```sh
+brew install kitanovicd/tap/blindspot
+blindspot setup
+```
+
+Or use the standalone installer:
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kitanovicd/blindspot/main/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 blindspot setup
 ```
 
-The installer downloads a verified release to `~/.local/bin`. Add the `export` line to your shell configuration if that directory is not already on your PATH. Run the installer again to update.
+The standalone installer downloads a verified release to `~/.local/bin`. Add the `export` line to your shell configuration if that directory is not already on your PATH. Run the installer again to update, or use `brew update && brew upgrade blindspot` for Homebrew installations.
 
 Supports **macOS (Apple Silicon and Intel)** and **Linux x86-64**, including WSL. `setup` downloads and verifies Gambit v1.0.6 in your user cache. No account or hosted service is needed.
 
@@ -102,5 +111,7 @@ scripts/              Release packaging
 ```
 
 To publish, push a version tag such as `v0.1.0`, or run the Release workflow manually for an existing tag. The workflow builds the binaries and publishes archives with SHA-256 checksums. `make release VERSION=v0.1.0` builds the same archives locally in `dist/`.
+
+After publishing, update the [Homebrew formula](https://github.com/kitanovicd/homebrew-tap#maintaining-the-formula) with the new release version and checksums.
 
 Blindspot is independent of Certora, Foundry, and Solidity. See [third-party notices](THIRD_PARTY_NOTICES.md) and [license](LICENSE).
