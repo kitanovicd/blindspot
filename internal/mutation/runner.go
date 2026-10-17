@@ -135,31 +135,12 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 		run.Errors = append(run.Errors, err.Error())
 		return run, runDir, errors.Join(err, finalize())
 	}
-	for i, file := range files {
-		if ctx.Err() != nil {
-			break
-		}
-		r.logf("Generate  [%d/%d] %s", i+1, len(files), file)
-		mutants, e := generate(ctx, root, snapshot, runDir, file, gambit, solc, cfg, opts)
-		if e != nil {
-			run.Errors = append(run.Errors, e.Error())
-			r.logf("Generation failed for %s; details will be in the report", file)
-			continue
-		}
-		run.Mutations = append(run.Mutations, mutants...)
-	}
+	mutants, generationErrors := r.generateSources(ctx, root, snapshot, runDir, files, gambit, solc, cfg, opts)
+	run.Mutations = mutants
+	run.Errors = append(run.Errors, generationErrors...)
+	run.Candidates = len(mutants)
 	// Stable seeded sampling across files; IDs identify content, not Gambit's renumbered IDs.
-	seen := map[string]bool{}
-	unique := []report.Mutation{}
-	for _, m := range run.Mutations {
-		if !seen[m.ID] {
-			unique = append(unique, m)
-			seen[m.ID] = true
-		}
-	}
-	run.Mutations = unique
-	run.Candidates = len(unique)
-	if opts.Limit > 0 && len(unique) > opts.Limit {
+	if opts.Limit > 0 && len(run.Mutations) > opts.Limit {
 		sort.Slice(run.Mutations, func(i, j int) bool {
 			return digest([]byte(fmt.Sprint(opts.Seed)+run.Mutations[i].ID)) < digest([]byte(fmt.Sprint(opts.Seed)+run.Mutations[j].ID))
 		})
@@ -185,8 +166,9 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	if err = finalize(); err != nil {
 		return run, runDir, err
 	}
-	r.logf("Evaluate  %d mutants · %d workers · full test suite", len(run.Mutations), opts.Jobs)
-	workers, err := prepareWorkers(snapshot, runDir, min(opts.Jobs, len(run.Mutations)))
+	workerCount := min(opts.Jobs, len(run.Mutations))
+	r.logf("Evaluate  %d mutations · %d workers · full test suite", len(run.Mutations), workerCount)
+	workers, err := prepareWorkers(snapshot, runDir, workerCount)
 	if err != nil {
 		run.State = "incomplete"
 		run.Errors = append(run.Errors, err.Error())
@@ -195,7 +177,11 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	jobs := make(chan int)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	completed := 0
+	stopProgress := r.startEvaluationProgress(len(run.Mutations), func() report.Summary {
+		mu.Lock()
+		defer mu.Unlock()
+		return run.Summary
+	})
 	for _, worker := range workers {
 		wg.Add(1)
 		go func(worker string) {
@@ -207,9 +193,6 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 				m := testMutant(ctx, worker, root, runDir, solc, cfg, opts, original)
 				mu.Lock()
 				run.Mutations[idx] = m
-				completed++
-				run.Refresh()
-				r.logf("[%d/%d] %-8s %s:%d  %s → %s", completed, len(run.Mutations), m.Status, m.File, m.Line, strings.TrimSpace(m.Original), strings.TrimSpace(m.Replacement))
 				if e := finalize(); e != nil {
 					run.Errors = append(run.Errors, "Could not checkpoint results: "+e.Error())
 				}
@@ -227,6 +210,7 @@ dispatch:
 	}
 	close(jobs)
 	wg.Wait()
+	stopProgress()
 	run.State = "completed"
 	run.Refresh()
 	if run.Summary.Caught+run.Summary.Survived == 0 && ctx.Err() == nil {

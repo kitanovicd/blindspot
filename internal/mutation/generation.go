@@ -14,6 +14,81 @@ import (
 	"github.com/kitanovicd/blindspot/internal/report"
 )
 
+// generateSources collects unique mutations while keeping progress output on
+// the caller's goroutine. Slow files get periodic updates; fast files stay quiet.
+func (r *Runner) generateSources(ctx context.Context, root, snapshot, runDir string, files []string, gambit, solc string, cfg foundryConfig, opts Options) ([]report.Mutation, []string) {
+	started := time.Now()
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+	r.logf("Generate  Finding mutations with Gambit in %s…", sourceFileCount(len(files)))
+	type result struct {
+		mutations []report.Mutation
+		err       error
+	}
+	mutations := []report.Mutation{}
+	var failures []string
+	seen := map[string]bool{}
+	processed, empty := 0, 0
+filesLoop:
+	for _, file := range files {
+		if ctx.Err() != nil {
+			break
+		}
+		done := make(chan result, 1)
+		go func() {
+			mutants, err := generate(ctx, root, snapshot, runDir, file, gambit, solc, cfg, opts)
+			done <- result{mutations: mutants, err: err}
+		}()
+		for {
+			select {
+			case generated := <-done:
+				processed++
+				if generated.err != nil {
+					failures = append(failures, generated.err.Error())
+					if ctx.Err() == nil {
+						r.logf("Generate  Could not process %s; see the report for details", file)
+					}
+				} else {
+					if len(generated.mutations) == 0 {
+						empty++
+					}
+					for _, m := range generated.mutations {
+						if !seen[m.ID] {
+							mutations = append(mutations, m)
+							seen[m.ID] = true
+						}
+					}
+				}
+				continue filesLoop
+			case <-ticker.C:
+				r.logf("Generate  %d/%d files processed · %d mutations found · scanning %s · %s elapsed", processed, len(files), len(mutations), file, time.Since(started).Round(time.Second))
+			}
+		}
+	}
+	parts := []string{
+		fmt.Sprintf("%d/%d files processed", processed, len(files)),
+		fmt.Sprintf("%d mutations found", len(mutations)),
+	}
+	if empty > 0 {
+		parts = append(parts, sourceFileCount(empty)+" had no applicable mutations")
+	}
+	if len(failures) > 0 {
+		parts = append(parts, sourceFileCount(len(failures))+" could not be processed")
+	}
+	if ctx.Err() != nil {
+		parts = append(parts, "interrupted")
+	}
+	r.logf("Generate  %s · %s elapsed", strings.Join(parts, " · "), time.Since(started).Round(time.Second))
+	return mutations, failures
+}
+
+func sourceFileCount(n int) string {
+	if n == 1 {
+		return "1 source file"
+	}
+	return fmt.Sprintf("%d source files", n)
+}
+
 func generate(ctx context.Context, root, snapshot, runDir, file, gambit, solc string, cfg foundryConfig, opts Options) ([]report.Mutation, error) {
 	source, err := os.ReadFile(filepath.Join(snapshot, file))
 	if err != nil {

@@ -54,6 +54,8 @@ The baseline compiles the original project, then runs its tests with a separate 
 
 Each worker uses its own project copy and one Forge thread. The selected profile, test filters, fuzz/invariant settings, optimizer, via-IR, and remappings are preserved. Foundry determines whether each mutant compiles; Gambit's separate mutant validation is disabled. Fuzz and invariant failure corpora are reset to baseline between mutants.
 
+Generation shows the number of files processed and mutations found, distinguishing files with no applicable mutations from generation failures. If it takes longer than 15 seconds, progress updates include the file currently being scanned. During evaluation, the terminal shows completed counts, results, and elapsed time every 15 seconds, plus a final update. Individual code changes stay in the report.
+
 ## Reports and saved runs
 
 ```sh
