@@ -101,6 +101,6 @@ docs/                 Usage reference
 scripts/              Release packaging
 ```
 
-To publish, push a version tag such as `v0.1.0`. The release workflow builds the binaries and publishes archives with SHA-256 checksums. `make release VERSION=v0.1.0` builds the same archives locally in `dist/`.
+To publish, push a version tag such as `v0.1.0`, or run the Release workflow manually for an existing tag. The workflow builds the binaries and publishes archives with SHA-256 checksums. `make release VERSION=v0.1.0` builds the same archives locally in `dist/`.
 
 Blindspot is independent of Certora, Foundry, and Solidity. See [third-party notices](THIRD_PARTY_NOTICES.md) and [license](LICENSE).
