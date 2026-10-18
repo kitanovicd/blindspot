@@ -11,9 +11,10 @@ const help = `
     report                     Open the latest report (no server required)
     reports                    Browse saved reports with the arrow keys
     clean                      Preview saved files and choose what to delete
+    import --project PATH      Move older project-local runs into the Blindspot folder
     replay <mutation-id>       Re-test one mutation from the saved snapshot
     doctor                     Check Foundry, Gambit, and compiler setup
-    setup                      Download and verify Gambit in your user cache
+    setup                      Download and verify Gambit in your Blindspot folder
     version                    Print the version
 
   Examples
@@ -22,7 +23,7 @@ const help = `
     blindspot run src/Vault.sol --line 16 --all
     blindspot run --changed origin/main --jobs 2
     blindspot report --serve
-    blindspot reports --scan /path/to/projects
+    blindspot reports
     blindspot clean --project /path/to/project --dry-run
     blindspot clean --all --yes
     blindspot replay m-0123456789ab
@@ -53,7 +54,7 @@ const help = `
   Exit codes: 0 complete · 1 setup/baseline failure · 2 survivors (opt-in)
               3 incomplete evaluation · 130 interrupted
 
-  Reports stay in PROJECT/.blindspot/. Mutations run in separate project copies.
+  Runs, reports, and settings stay in ~/.blindspot/ (override: BLINDSPOT_HOME).
   Cleanup keeps reports unless --all is supplied. Use --yes for noninteractive deletion.
   Full docs: https://github.com/kitanovicd/blindspot#readme
 `

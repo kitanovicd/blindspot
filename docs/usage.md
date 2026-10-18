@@ -4,7 +4,7 @@ See the [README](../README.md) for installation and a first run.
 
 ## Installation options
 
-With Homebrew, use `brew install kitanovicd/tap/blindspot`, then `blindspot`. Homebrew installs the binary on your PATH and verifies its release checksum. Update with `brew update && brew upgrade blindspot`; remove it with `brew uninstall blindspot`. Uninstalling keeps saved project reports and the Gambit cache.
+With Homebrew, use `brew install kitanovicd/tap/blindspot`, then `blindspot`. Homebrew installs the binary on your PATH and verifies its release checksum. Update with `brew update && brew upgrade blindspot`; remove it with `brew uninstall blindspot`. Uninstalling keeps your `~/.blindspot/` data.
 
 The standalone installer uses `~/.local/bin` and never changes your shell configuration or requires sudo. Run it again to update, or choose a directory and version:
 
@@ -25,11 +25,11 @@ blindspot setup
 
 If you set `GOBIN`, use that directory on PATH instead. `blindspot version` prints the installed version.
 
-`blindspot setup` downloads Gambit v1.0.6 and checks its pinned SHA-256 hash. Managed tools live in `~/Library/Caches/blindspot/tools` on macOS and `$XDG_CACHE_HOME/blindspot/tools` (usually `~/.cache/blindspot/tools`) on Linux. Set `BLINDSPOT_TOOLS_DIR` to override this location; keep it set when running Blindspot. If you clear the cache, run `blindspot setup` again.
+`blindspot setup` downloads Gambit v1.0.6 and checks its pinned SHA-256 hash. New managed tools live in `~/.blindspot/tools`, alongside saved runs and settings. Existing Gambit installations in the previous system cache remain usable. Set `BLINDSPOT_TOOLS_DIR` to override this location; keep it set when running Blindspot. If you clear the cache, run `blindspot setup` again.
 
 An explicit `--gambit` takes precedence, followed by the managed installation, your PATH, and `.tools` beside the executable (for source checkouts). Install Foundry separately. Guided setup builds the project before compiler discovery so Forge can install the required Solidity compiler. Use `blindspot doctor --project /path/to/project` to inspect an existing setup.
 
-To uninstall the default installation, remove `~/.local/bin/blindspot` and, optionally, the Blindspot tools cache. Saved reports stay in each project's `.blindspot/` directory.
+To uninstall the default installation, remove `~/.local/bin/blindspot` and, optionally, the tools in `~/.blindspot/tools`. Saved reports stay in your Blindspot folder.
 
 ## Guided setup and custom commands
 
@@ -48,7 +48,7 @@ Commands run through `/bin/sh` from the project root. Shell operators, Makefiles
 
 The project path can contain spaces or start with `~`. Sources, tests, dependencies, and build directories follow the project's Foundry configuration rather than a hardcoded `src/` or `test/` layout. Dependencies must still live inside the selected project root.
 
-Commands are stored in `PROJECT/.blindspot/settings.json` and shown as prompt defaults on the next guided run. Noninteractive runs do not read saved commands. Keep secrets in environment variables rather than command text; commands are also recorded with the results for replay.
+Commands are stored in `~/.blindspot/projects/PROJECT_ID/settings.json` and shown as prompt defaults on the next guided run. Noninteractive runs do not read saved commands. Keep secrets in environment variables rather than command text; commands are also recorded with the results for replay.
 
 When you decline to keep replay files, Blindspot saves the HTML report and JSON results, then removes snapshots, generated mutations, and build caches. Failed and interrupted runs retain diagnostic logs. Cleanup happens only after the results are saved. Runs using flags keep artifacts by default for compatibility; pass `--keep-artifacts=false` to clean them automatically. Use `--keep-artifacts` to retain them explicitly.
 
@@ -139,7 +139,7 @@ blindspot report --project /path/to/project --serve --port 8080
 
 Reports are self-contained. The optional server binds only to `127.0.0.1` and serves the report, not the project directory. Reopening a report refreshes its layout with the current Blindspot version without rerunning tests.
 
-Each run lives in `PROJECT/.blindspot/runs/RUN_ID/`:
+All Blindspot data lives in `~/.blindspot/`. Each source project has a stable ID derived from its path, so projects with the same name stay separate. A run lives in `~/.blindspot/projects/PROJECT_ID/runs/RUN_ID/`:
 
 | File or directory | Contents |
 | --- | --- |
@@ -157,24 +157,31 @@ Ctrl+C stops active processes and preserves completed results without opening th
 ```sh
 blindspot reports                        # Browse with ↑/↓ and Enter
 blindspot reports --list                 # Print report paths
-blindspot reports --scan /path/to/projects
 blindspot clean                          # Review sizes, select runs, confirm deletion
 blindspot clean --project /path/to/project --dry-run
 blindspot clean --project /path/to/project --older-than 30d --yes
-blindspot clean --all --yes              # Delete all discovered inactive runs and reports
+blindspot clean --all --yes              # Delete all inactive saved runs and reports
 ```
 
-The report browser lists projects, dates, run status, and surviving mutation counts, newest first. Selecting a report opens its saved HTML file. It also works when the project no longer has its original `foundry.toml`.
+The report browser lists projects, dates, run status, and surviving mutation counts, newest first. Selecting a report opens its saved HTML file. Browsing, cleanup, and replay use saved data without opening the original project, so they still work when it has moved or been deleted. `--project PATH` filters saved projects by their original path; it does not scan that directory.
 
 The cleanup menu shows run locations and approximate file sizes. Choose whether to remove replay files while preserving reports, or delete entire runs. Use Space to select runs, A to select all, Enter to continue, then confirm. Press Esc to cancel. Terminals without cursor controls use numbered prompts instead.
 
 Without `--all`, cleanup removes snapshots, generated mutations, build artifacts, and full logs; `run.json` and `report.html` remain. `--all` deletes the selected run directories, including reports. `--yes` applies the displayed plan without a prompt; otherwise noninteractive commands only preview. `--dry-run` never deletes. `--run ID` restricts cleanup to one run and requires `--project`. `--older-than` accepts durations such as `30d` and `24h`.
 
-Cleanup never removes project source files, `.blindspot/settings.json`, the project index, or installed tools. Runs and replays lock their project; cleanup skips busy projects and checks again before deleting. Legacy runs still marked `running` are retained because their activity cannot be verified. Deleting the latest run updates the latest-report pointer. Cleaned reports remain readable but no longer offer replay.
+Cleanup never removes project source files, saved setup settings, or installed tools. Runs and replays lock their project; cleanup skips busy projects and checks again before deleting. Legacy runs still marked `running` are retained because their activity cannot be verified. Deleting the latest run updates the latest-report pointer. Cleaned reports remain readable but no longer offer replay.
 
-New runs register their project path in a private local index: `~/Library/Application Support/blindspot/projects` on macOS, or `$XDG_CONFIG_HOME/blindspot/projects` (usually `~/.config/blindspot/projects`) on Linux. Set `BLINDSPOT_STATE_DIR` to relocate this index. No index data is uploaded.
+Report browsing and cleanup read only the dedicated Blindspot folder. They never scan your home, Desktop, Documents, Downloads, or other project directories. Normal mutation testing still needs access to the source project you explicitly select.
 
-By default, discovery includes indexed projects and scans your home folder, plus the current directory when outside your home. It skips hidden folders, `node_modules`, `Library`, `Applications`, and symlinks, and reports inaccessible locations. Use `--scan PATH` to search an external drive or a skipped folder explicitly; repeat it for multiple roots. Explicit `--scan` roots replace the default search, while `--project PATH` selects exactly one project. This avoids traversing the entire filesystem and requires no Forge installation just to browse or clean saved files.
+Set `BLINDSPOT_HOME` to use another dedicated data folder. Keep it set for subsequent commands. `BLINDSPOT_STATE_DIR` remains a fallback alias for older configurations. No storage metadata is uploaded.
+
+Older versions stored runs inside each project's `.blindspot/`. To move those runs into the new central folder, select that project explicitly:
+
+```sh
+blindspot import --project /path/to/project
+```
+
+Import moves finished runs and copies saved setup settings. It skips active projects, unfinished or unreadable runs, and duplicate IDs. Old project folders are never searched automatically. Source files are preserved; import is the only storage command that accesses the selected project's legacy run folder.
 
 ## Replay a mutation
 
@@ -207,4 +214,4 @@ blindspot run --project /path/to/project --all --fail-on-survivors --json > resu
 - **Project boundaries:** Keep source, dependencies, output paths, and configured filesystem access inside the project root. Internal symlinks are copied; external symlinks are rejected. Use a self-contained Foundry root in monorepos.
 - **FFI:** Profiles with `ffi = true` require `--allow-ffi`. It permits the existing setting without changing `foundry.toml`. Project copies are not security sandboxes: subprocesses can affect files and services outside the copy. Helpers must tolerate repeated runs; use `--jobs 1` if they share external state. Replay retains the original FFI permission.
 - **Reproducibility:** Pin fork blocks and use stable tests. Configured RPC URLs require a block number; tests creating forks themselves must pin their own blocks. External services and filesystem side effects can still change results.
-- **Privacy:** Add `.blindspot/` to your project's `.gitignore`. Snapshots and logs may contain secrets or local configuration. HTML exports include source and absolute local paths. Review artifacts before sharing them or committing them.
+- **Privacy:** Saved data stays in your dedicated Blindspot folder. Snapshots and logs may contain secrets or local configuration. HTML exports include source and absolute local paths. Review artifacts before sharing them or committing them.

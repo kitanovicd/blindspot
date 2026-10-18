@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/kitanovicd/blindspot/internal/storage"
 )
 
 // Locate resolves an explicit tool, managed installation, PATH, or local tool.
@@ -27,6 +29,15 @@ func Locate(explicit, name string) (string, error) {
 	if name == "gambit" {
 		if p, err := gambitPath(); err == nil {
 			if p, err := exec.LookPath(p); err == nil {
+				return p, nil
+			}
+		}
+	}
+	// Existing installations may still use the old cache. This checks one known
+	// tool path; it never searches source projects or personal folders.
+	if name == "gambit" && os.Getenv("BLINDSPOT_TOOLS_DIR") == "" {
+		if cache, err := os.UserCacheDir(); err == nil {
+			if p, err := exec.LookPath(filepath.Join(cache, "blindspot", "tools", "gambit-v1.0.6", "gambit")); err == nil {
 				return p, nil
 			}
 		}
@@ -60,7 +71,8 @@ func ResolveSolc(explicit, configured, root string) (string, error) {
 	home, _ := os.UserHomeDir()
 	svmDirs := svmDirectories(home, runtime.GOOS, os.Getenv("XDG_DATA_HOME"), os.Getenv("APPDATA"))
 	if version != "" {
-		for _, p := range []string{filepath.Join(filepath.Dir(exe), ".tools", "solc-"+version), filepath.Join(filepath.Dir(filepath.Dir(exe)), ".tools", "solc-"+version), filepath.Join(root, ".blindspot", "tools", "solc-"+version)} {
+		home, _ := storage.Home()
+		for _, p := range []string{filepath.Join(filepath.Dir(exe), ".tools", "solc-"+version), filepath.Join(filepath.Dir(filepath.Dir(exe)), ".tools", "solc-"+version), filepath.Join(home, "tools", "solc-"+version)} {
 			if exists(p) {
 				return p, nil
 			}

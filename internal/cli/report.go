@@ -28,7 +28,7 @@ func (a *app) report(ctx context.Context, args []string) int {
 	if *port < 0 || *port > 65535 {
 		return a.fail(fmt.Errorf("port must be between 0 and 65535"))
 	}
-	root, err := mutation.ProjectRoot(*project)
+	root, err := storage.ResolveProject(ctx, *project)
 	if err != nil {
 		return a.fail(err)
 	}

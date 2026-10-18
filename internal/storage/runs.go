@@ -33,7 +33,11 @@ func RunDir(project, id string) (string, error) {
 	if err := checkStore(project, false); err != nil {
 		return "", err
 	}
-	dir := filepath.Join(project, ".blindspot", "runs")
+	store, err := ProjectDir(project)
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(store, "runs")
 	for _, path := range []string{dir, filepath.Join(dir, id)} {
 		info, err := os.Lstat(path)
 		if err != nil {
@@ -105,15 +109,19 @@ func List(ctx context.Context, projects []string, measure bool) ([]Entry, []stri
 			warnings = append(warnings, err.Error())
 			continue
 		}
+		store, err := ProjectDir(project)
+		if err != nil {
+			return nil, warnings, err
+		}
 		var lockErr error
-		if _, err := os.Lstat(filepath.Join(project, ".blindspot", ".lock")); !os.IsNotExist(err) {
+		if _, err := os.Lstat(filepath.Join(store, ".lock")); !os.IsNotExist(err) {
 			var unlock func()
 			unlock, lockErr = LockProject(project, true)
 			if unlock != nil {
 				unlock()
 			}
 		}
-		dirs, err := os.ReadDir(filepath.Join(project, ".blindspot", "runs"))
+		dirs, err := os.ReadDir(filepath.Join(store, "runs"))
 		if os.IsNotExist(err) {
 			continue
 		}
@@ -232,7 +240,14 @@ func Clean(ctx context.Context, entry Entry, all bool) (int64, error) {
 }
 
 func repairLatest(project string) error {
-	dir := filepath.Join(project, ".blindspot")
+	dir, err := ProjectDir(project)
+	if err != nil {
+		return err
+	}
+	return repairLatestIn(dir)
+}
+
+func repairLatestIn(dir string) error {
 	entries, err := os.ReadDir(filepath.Join(dir, "runs"))
 	if err != nil {
 		return err

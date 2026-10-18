@@ -58,11 +58,15 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	}
 	defer unlock()
 	if err := storage.Remember(root); err != nil {
-		r.logf("Could not update local project index: %v", err)
+		return nil, "", fmt.Errorf("prepare saved project: %w", err)
 	}
 	start := time.Now()
 	id := start.UTC().Format("20060102-150405") + "-" + digest([]byte(fmt.Sprint(start.UnixNano())))[:6]
-	runDir := filepath.Join(root, ".blindspot", "runs", id)
+	store, err := storage.ProjectDir(root)
+	if err != nil {
+		return nil, "", err
+	}
+	runDir := filepath.Join(store, "runs", id)
 	if err = os.MkdirAll(runDir, 0700); err != nil {
 		return nil, "", err
 	}
@@ -142,7 +146,15 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	r.section("Prepare")
 	r.logf("  Copying project into an isolated snapshot…")
 	snapshot := filepath.Join(runDir, "snapshot")
-	excludes := []string{cfg.Out, cfg.CachePath, ".blindspot-build"}
+	home, err := storage.Home()
+	if err != nil {
+		return run, runDir, err
+	}
+	home, err = filepath.EvalSymlinks(home)
+	if err != nil {
+		return run, runDir, err
+	}
+	excludes := []string{cfg.Out, cfg.CachePath, ".blindspot-build", home}
 	if err = copyTree(root, snapshot, excludes); err != nil {
 		return run, runDir, err
 	}

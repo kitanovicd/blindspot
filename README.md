@@ -85,7 +85,7 @@ blindspot report --project /path/to/project
 blindspot replay MUTATION_ID --project /path/to/project --run RUN_ID
 ```
 
-Runs are saved in `PROJECT/.blindspot/`. Add `.blindspot/` to your project's `.gitignore`: snapshots and logs may contain local configuration or secrets. HTML reports include source and local paths, so review them before sharing.
+All runs, reports, snapshots, and settings are saved under **`~/.blindspot/`**. Set `BLINDSPOT_HOME` to use another dedicated folder. Snapshots and logs may contain local secrets; reports include source and paths, so review them before sharing.
 
 Replay requires keeping the project snapshot and mutation files. Start a new run to evaluate changed code or tests.
 
@@ -94,12 +94,14 @@ Replay requires keeping the project snapshot and mutation files. Start a new run
 ```sh
 blindspot reports                  # Choose a report with the arrow keys
 blindspot clean                    # Review sizes and select files to remove
-blindspot clean --all --yes         # Delete all discovered inactive runs and reports
+blindspot clean --all --yes         # Delete all inactive saved runs and reports
 ```
 
 Cleanup keeps reports by default. Add `--project /path/to/project` to limit it to one project, or `--dry-run` to preview without deleting. Active projects are skipped. Project source files and setup settings are preserved.
 
-Blindspot finds runs in registered projects and scans your home directory, skipping hidden, system, and dependency folders. Use `--scan /path/to/projects` with `reports` or `clean` to search another location. See the [usage guide](docs/usage.md#browse-and-clean-saved-runs) for details.
+The report browser and cleanup only read the Blindspot folder. They do not scan your home directory or need access to Desktop, Documents, or Downloads.
+
+To move runs created by an older version from one specific project, use `blindspot import --project /path/to/project`. Old runs are never searched for automatically. See the [usage guide](docs/usage.md#browse-and-clean-saved-runs) for details.
 
 See the **[usage guide](docs/usage.md)** for flags, timeouts, FFI, CI, exporting reports, and compatibility. Use `blindspot COMMAND --help` for command options.
 

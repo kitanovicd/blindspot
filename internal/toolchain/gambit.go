@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/kitanovicd/blindspot/internal/storage"
 )
 
 // InstallGambit verifies and installs the pinned release in a user-owned directory.
@@ -91,11 +93,11 @@ func InstallGambit(ctx context.Context, output, progress io.Writer) error {
 func gambitPath() (string, error) {
 	dir := os.Getenv("BLINDSPOT_TOOLS_DIR")
 	if dir == "" {
-		cache, err := os.UserCacheDir()
+		home, err := storage.Home()
 		if err != nil {
-			return "", fmt.Errorf("find user cache: %w; set BLINDSPOT_TOOLS_DIR to a writable directory", err)
+			return "", fmt.Errorf("find Blindspot folder: %w; set BLINDSPOT_HOME to a writable directory", err)
 		}
-		dir = filepath.Join(cache, "blindspot", "tools")
+		dir = filepath.Join(home, "tools")
 	}
 	return filepath.Abs(filepath.Join(dir, "gambit-v1.0.6", "gambit"))
 }

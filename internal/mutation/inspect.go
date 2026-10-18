@@ -2,8 +2,10 @@ package mutation
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 
+	"github.com/kitanovicd/blindspot/internal/storage"
 	"github.com/kitanovicd/blindspot/internal/toolchain"
 )
 
@@ -20,7 +22,19 @@ func Inspect(ctx context.Context, opts Options) (Environment, error) {
 	if err != nil {
 		return Environment{}, err
 	}
-	cfg, err := loadFoundry(ctx, root, filepath.Join(root, ".blindspot", "doctor"), opts.Profile)
+	if err := storage.Remember(root); err != nil {
+		return Environment{}, err
+	}
+	store, err := storage.ProjectDir(root)
+	if err != nil {
+		return Environment{}, err
+	}
+	dir, err := os.MkdirTemp(store, ".doctor-*")
+	if err != nil {
+		return Environment{}, err
+	}
+	defer os.RemoveAll(dir)
+	cfg, err := loadFoundry(ctx, root, filepath.Join(dir, "config"), opts.Profile)
 	if err != nil {
 		return Environment{}, err
 	}

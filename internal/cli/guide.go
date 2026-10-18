@@ -50,7 +50,11 @@ func (a *app) guide(ctx context.Context, opts *mutation.Options, open *bool, fla
 			break
 		}
 	}
-	file := filepath.Join(opts.Project, ".blindspot", "settings.json")
+	store, err := storage.ProjectDir(opts.Project)
+	if err != nil {
+		return err
+	}
+	file := filepath.Join(store, "settings.json")
 	if data, err := os.ReadFile(file); err == nil {
 		var saved projectSettings
 		if json.Unmarshal(data, &saved) == nil {
@@ -77,7 +81,6 @@ func (a *app) guide(ctx context.Context, opts *mutation.Options, open *bool, fla
 	if settings.Install == "" {
 		settings.Install = "skip"
 	}
-	var err error
 	settings.Install, err = ask("How do you install dependencies? (or type skip)", settings.Install)
 	if err != nil {
 		return err
@@ -145,13 +148,13 @@ func (a *app) guide(ctx context.Context, opts *mutation.Options, open *bool, fla
 	if err := opts.Validate(); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+	if err := storage.Remember(opts.Project); err != nil {
 		return err
 	}
 	if err := storage.WriteJSON(file, settings); err != nil {
 		return err
 	}
-	fmt.Fprintln(a.out, "\n  Commands saved for next time in .blindspot/settings.json.")
+	fmt.Fprintln(a.out, "\n  Settings saved in your Blindspot folder.")
 	fmt.Fprintln(a.out, "  Setup runs in your project. Mutations run in separate copies.")
 	if opts.Gambit == "" {
 		if _, err := toolchain.Locate("", "gambit"); err != nil {

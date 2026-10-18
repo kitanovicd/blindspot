@@ -21,7 +21,7 @@ type ReplayOptions struct {
 
 // Replay evaluates one mutation against the original saved snapshot.
 func (r *Runner) Replay(ctx context.Context, input ReplayOptions) (report.Mutation, error) {
-	root, err := findProject(input.Project)
+	root, err := storage.ResolveProject(ctx, input.Project)
 	if err != nil {
 		return report.Mutation{}, err
 	}

@@ -13,29 +13,28 @@ import (
 	"github.com/kitanovicd/blindspot/internal/terminal"
 )
 
-type scanPaths []string
-
-func (p *scanPaths) String() string         { return strings.Join(*p, ", ") }
-func (p *scanPaths) Set(value string) error { *p = append(*p, value); return nil }
-
-func (a *app) inventory(ctx context.Context, project string, roots []string, measure bool) ([]storage.Entry, error) {
-	var projects, warnings []string
-	var err error
-	if project != "" {
-		root, err := storage.Expand(project)
-		if err != nil {
-			return nil, err
-		}
-		projects = []string{root}
-	} else {
-		fmt.Fprintln(a.errOut, "\n  Looking for saved Blindspot runs…")
-		projects, warnings, err = storage.Discover(ctx, roots)
-		if err != nil {
-			return nil, err
-		}
+func (a *app) inventory(ctx context.Context, project string, measure bool) ([]storage.Entry, error) {
+	home, err := storage.Home()
+	if err != nil {
+		return nil, err
 	}
-	for _, warning := range warnings {
-		fmt.Fprintln(a.errOut, "  "+warning)
+	fmt.Fprintln(a.out, "\n  Storage  "+home)
+	projects, err := storage.Projects(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if project != "" {
+		root, err := storage.ResolveProject(ctx, project)
+		if err != nil {
+			return nil, err
+		}
+		filtered := projects[:0]
+		for _, p := range projects {
+			if p == root {
+				filtered = append(filtered, p)
+			}
+		}
+		projects = filtered
 	}
 	entries, warnings, err := storage.List(ctx, projects, measure)
 	for _, warning := range warnings {
@@ -48,15 +47,13 @@ func (a *app) reports(ctx context.Context, args []string) int {
 	f := a.flags("reports")
 	project := f.String("project", "", "List reports in one project")
 	list := f.Bool("list", false, "List reports without opening a menu")
-	var roots scanPaths
-	f.Var(&roots, "scan", "Search a directory instead of the default locations; repeatable")
 	if err := parseFlags(f, args); err != nil {
 		return flagExit(err)
 	}
-	if f.NArg() != 0 || (*project != "" && len(roots) > 0) {
-		return a.fail(fmt.Errorf("use --project or --scan, without positional arguments"))
+	if f.NArg() != 0 {
+		return a.fail(fmt.Errorf("use --project to filter saved reports, without positional arguments"))
 	}
-	entries, err := a.inventory(ctx, *project, roots, false)
+	entries, err := a.inventory(ctx, *project, false)
 	if err != nil {
 		return a.promptError(err)
 	}
@@ -70,7 +67,7 @@ func (a *app) reports(ctx context.Context, args []string) int {
 		choices = append(choices, terminal.Choice{Title: runTitle(entry), Detail: entry.Project + " · " + entry.ID})
 	}
 	if len(ready) == 0 {
-		return a.text("\n  No saved reports found. Use --scan PATH to search another location.\n")
+		return a.text("\n  No saved reports yet. Start a Blindspot run to create one.\n")
 	}
 	if *list || !terminal.IsTerminal(os.Stdin) {
 		for _, entry := range ready {
@@ -140,13 +137,11 @@ func (a *app) clean(ctx context.Context, args []string) int {
 	dry := f.Bool("dry-run", false, "Preview files and sizes without deleting")
 	older := f.String("older-than", "", "Only runs older than a duration, for example 30d or 24h")
 	id := f.String("run", "", "Only this run ID; requires --project")
-	var roots scanPaths
-	f.Var(&roots, "scan", "Search a directory instead of the default locations; repeatable")
 	if err := parseFlags(f, args); err != nil {
 		return flagExit(err)
 	}
-	if f.NArg() != 0 || (*project != "" && len(roots) > 0) || (*id != "" && *project == "") {
-		return a.fail(fmt.Errorf("use --project or --scan; --run requires --project"))
+	if f.NArg() != 0 || (*id != "" && *project == "") {
+		return a.fail(fmt.Errorf("--run requires --project; positional arguments are not accepted"))
 	}
 	var cutoff time.Time
 	if *older != "" {
@@ -162,7 +157,7 @@ func (a *app) clean(ctx context.Context, args []string) int {
 		}
 		cutoff = time.Now().Add(-age * factor)
 	}
-	entries, err := a.inventory(ctx, *project, roots, true)
+	entries, err := a.inventory(ctx, *project, true)
 	if err != nil {
 		return a.promptError(err)
 	}
@@ -278,6 +273,27 @@ func (a *app) clean(ctx context.Context, args []string) int {
 	fmt.Fprintf(a.out, "\n  Cleaned %d runs · %s removed\n", cleaned, bytesLabel(freed))
 	if failed > 0 {
 		return 1
+	}
+	return 0
+}
+
+func (a *app) importRuns(ctx context.Context, args []string) int {
+	f := a.flags("import")
+	project := f.String("project", "", "Move legacy .blindspot runs from this project into the central store")
+	if err := parseFlags(f, args); err != nil {
+		return flagExit(err)
+	}
+	if f.NArg() != 0 || *project == "" {
+		return a.fail(fmt.Errorf("usage: blindspot import --project PATH"))
+	}
+	fmt.Fprintln(a.out, "\n  Moving saved runs from the selected project…")
+	count, warnings, err := storage.Import(ctx, *project)
+	for _, warning := range warnings {
+		fmt.Fprintln(a.errOut, "  "+warning)
+	}
+	fmt.Fprintf(a.out, "  Imported %d runs.\n", count)
+	if err != nil {
+		return a.promptError(err)
 	}
 	return 0
 }

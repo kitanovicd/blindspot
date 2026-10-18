@@ -55,6 +55,8 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return a.report(ctx, args[1:])
 	case "reports":
 		return a.reports(ctx, args[1:])
+	case "import":
+		return a.importRuns(ctx, args[1:])
 	case "clean":
 		return a.clean(ctx, args[1:])
 	case "replay":

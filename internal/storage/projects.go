@@ -1,4 +1,4 @@
-// Package storage discovers and manages local Blindspot run files.
+// Package storage manages Blindspot's dedicated local data directory.
 package storage
 
 import (
@@ -6,29 +6,163 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 )
 
-func stateDir() (string, error) {
-	if dir := os.Getenv("BLINDSPOT_STATE_DIR"); dir != "" {
-		return filepath.Abs(dir)
+// Home is the only root used to store and discover Blindspot data. Computing
+// paths must not inspect source projects or trigger access to protected folders.
+func Home() (string, error) {
+	dir := os.Getenv("BLINDSPOT_HOME")
+	if dir == "" {
+		dir = os.Getenv("BLINDSPOT_STATE_DIR")
 	}
-	dir, err := os.UserConfigDir()
-	return filepath.Join(dir, "blindspot"), err
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		dir = filepath.Join(home, ".blindspot")
+	}
+	return Expand(dir)
 }
 
-// Remember stores only a project path, locally. Separate records avoid lost
-// updates when several projects run at once.
+// Expand is lexical: saved project paths remain usable without filesystem access.
+func Expand(path string) (string, error) {
+	if path == "~" || strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		path = filepath.Join(home, strings.TrimPrefix(strings.TrimPrefix(path, "~"), "/"))
+	}
+	return filepath.Abs(path)
+}
+
+func ProjectDir(project string) (string, error) {
+	home, err := Home()
+	if err != nil {
+		return "", err
+	}
+	project, err = Expand(project)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, "projects", fmt.Sprintf("%x", sha256.Sum256([]byte(project)))), nil
+}
+
 func Remember(project string) error {
-	dir, err := stateDir()
+	if err := checkStore(project, true); err != nil {
+		return err
+	}
+	dir, err := ProjectDir(project)
 	if err != nil {
 		return err
 	}
-	return WriteJSON(filepath.Join(dir, "projects", fmt.Sprintf("%x.json", sha256.Sum256([]byte(project)))), project)
+	return WriteJSON(filepath.Join(dir, "project.json"), project)
+}
+
+// Projects reads only records inside the dedicated store. Source project paths
+// are labels, never directories to visit while browsing or cleaning saved runs.
+func Projects(ctx context.Context) ([]string, error) {
+	home, err := Home()
+	if err != nil {
+		return nil, err
+	}
+	for _, dir := range []string{home, filepath.Join(home, "projects")} {
+		if err := directory(dir, false); os.IsNotExist(err) {
+			return nil, nil
+		} else if err != nil {
+			return nil, err
+		}
+	}
+	entries, err := os.ReadDir(filepath.Join(home, "projects"))
+	if err != nil {
+		return nil, err
+	}
+	var result []string
+	for _, entry := range entries {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if !entry.IsDir() {
+			continue
+		}
+		dir := filepath.Join(home, "projects", entry.Name())
+		file := filepath.Join(dir, "project.json")
+		info, err := os.Lstat(file)
+		if err != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		data, err := os.ReadFile(file)
+		var project string
+		if err != nil || json.Unmarshal(data, &project) != nil || !filepath.IsAbs(project) {
+			continue
+		}
+		expected, err := ProjectDir(project)
+		if err == nil && expected == dir {
+			result = append(result, project)
+		}
+	}
+	sort.Strings(result)
+	return result, nil
+}
+
+// ResolveProject supports a saved project's subdirectories without searching
+// for foundry.toml or requiring the original project to exist.
+func ResolveProject(ctx context.Context, input string) (string, error) {
+	path, err := Expand(input)
+	if err != nil {
+		return "", err
+	}
+	projects, err := Projects(ctx)
+	if err != nil {
+		return "", err
+	}
+	best := ""
+	for _, project := range projects {
+		if (path == project || strings.HasPrefix(path, project+string(os.PathSeparator))) && len(project) > len(best) {
+			best = project
+		}
+	}
+	if best != "" {
+		return best, nil
+	}
+	return path, nil
+}
+
+func checkStore(project string, create bool) error {
+	dir, err := ProjectDir(project)
+	if err != nil {
+		return err
+	}
+	for _, path := range []string{filepath.Dir(filepath.Dir(dir)), filepath.Dir(dir), dir} {
+		if err := directory(path, create); err != nil {
+			return err
+		}
+	}
+	if err := directory(filepath.Join(dir, "runs"), false); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func directory(path string, create bool) error {
+	if create {
+		if err := os.MkdirAll(path, 0700); err != nil && !os.IsExist(err) {
+			return err
+		}
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("refusing a symlinked or non-directory Blindspot folder: %s", path)
+	}
+	return nil
 }
 
 // WriteJSON atomically replaces a private local metadata file.
@@ -53,127 +187,4 @@ func WriteJSON(path string, value any) error {
 		return err
 	}
 	return os.Rename(f.Name(), path)
-}
-
-// Expand resolves home-relative and symlinked roots supplied by the user.
-func Expand(path string) (string, error) {
-	if path == "~" || strings.HasPrefix(path, "~/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		path = filepath.Join(home, strings.TrimPrefix(strings.TrimPrefix(path, "~"), "/"))
-	}
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	return filepath.EvalSymlinks(path)
-}
-
-// Discover combines registered projects with a directory scan. Explicit roots
-// restrict the scan; the default searches the home directory and current path.
-// Dependency, hidden, and system trees are skipped, and symlinks are not followed.
-func Discover(ctx context.Context, roots []string) ([]string, []string, error) {
-	projects := map[string]bool{}
-	var warnings []string
-	add := func(project string) {
-		project, err := Expand(project)
-		if err == nil && checkStore(project, false) == nil {
-			projects[project] = true
-		}
-	}
-	if len(roots) == 0 {
-		dir, err := stateDir()
-		if err != nil {
-			return nil, nil, err
-		}
-		entries, err := os.ReadDir(filepath.Join(dir, "projects"))
-		if err != nil && !os.IsNotExist(err) {
-			warnings = append(warnings, "Could not read the project index: "+err.Error())
-		}
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-				continue
-			}
-			data, err := os.ReadFile(filepath.Join(dir, "projects", entry.Name()))
-			var project string
-			if err == nil && json.Unmarshal(data, &project) == nil {
-				add(project)
-			}
-		}
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return nil, nil, err
-		}
-		roots = []string{home}
-		if cwd, err := os.Getwd(); err == nil && cwd != home && !strings.HasPrefix(cwd, home+string(os.PathSeparator)) {
-			roots = append(roots, cwd)
-		}
-	}
-	seen := map[string]bool{}
-	for _, input := range roots {
-		root, err := Expand(input)
-		if err != nil {
-			warnings = append(warnings, err.Error())
-			continue
-		}
-		if seen[root] {
-			continue
-		}
-		seen[root] = true
-		err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			if err != nil {
-				if len(warnings) < 8 {
-					warnings = append(warnings, "Could not inspect "+path)
-				}
-				return filepath.SkipDir
-			}
-			if !entry.IsDir() {
-				return nil
-			}
-			if entry.Name() == ".blindspot" {
-				add(filepath.Dir(path))
-				return filepath.SkipDir
-			}
-			if path != root && (strings.HasPrefix(entry.Name(), ".") || entry.Name() == "node_modules" || entry.Name() == "Library" || entry.Name() == "Applications") {
-				return filepath.SkipDir
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, warnings, err
-		}
-	}
-	result := make([]string, 0, len(projects))
-	for project := range projects {
-		result = append(result, project)
-	}
-	sort.Strings(result)
-	return result, warnings, nil
-}
-
-func checkStore(project string, create bool) error {
-	path := filepath.Join(project, ".blindspot")
-	if create {
-		if err := os.Mkdir(path, 0700); err != nil && !os.IsExist(err) {
-			return err
-		}
-	}
-	info, err := os.Lstat(path)
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("refusing a non-directory or symlinked run store: %s", path)
-	}
-	if info, err := os.Lstat(filepath.Join(path, "runs")); err == nil && !info.IsDir() {
-		return fmt.Errorf("refusing a symlinked or non-directory runs folder: %s", filepath.Join(path, "runs"))
-	} else if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	return nil
 }

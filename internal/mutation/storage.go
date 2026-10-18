@@ -21,42 +21,36 @@ func saveRun(root, dir string, run *report.Run) error {
 	if err := report.Write(filepath.Join(dir, "report.html"), run); err != nil {
 		return err
 	}
-	return writeJSON(filepath.Join(root, ".blindspot", "latest.json"), map[string]string{"id": run.ID})
+	store, err := storage.ProjectDir(root)
+	if err != nil {
+		return err
+	}
+	return writeJSON(filepath.Join(store, "latest.json"), map[string]string{"id": run.ID})
 }
 
 // LoadRun reads a saved result without running any tests.
 func LoadRun(project, id string) (*report.Run, string, error) {
-	root, err := findProject(project)
+	store, err := storage.ProjectDir(project)
 	if err != nil {
 		return nil, "", err
 	}
 	if id == "" {
-		data, err := os.ReadFile(filepath.Join(root, ".blindspot", "latest.json"))
+		data, err := os.ReadFile(filepath.Join(store, "latest.json"))
 		if err != nil {
-			return nil, "", fmt.Errorf("no report yet. Run `blindspot run` first")
+			return nil, "", fmt.Errorf("no saved report for this project. Run `blindspot run` first")
 		}
 		var latest struct {
 			ID string `json:"id"`
 		}
-		if err = json.Unmarshal(data, &latest); err != nil {
+		if err := json.Unmarshal(data, &latest); err != nil {
 			return nil, "", err
 		}
 		id = latest.ID
 	}
-	dir := filepath.Join(root, ".blindspot", "runs", id)
-	if filepath.Base(id) != id || id == "." || id == ".." {
-		return nil, "", fmt.Errorf("invalid run ID")
-	}
-	data, err := os.ReadFile(filepath.Join(dir, "run.json"))
+	dir, err := storage.RunDir(project, id)
 	if err != nil {
 		return nil, "", err
 	}
-	var run report.Run
-	if err = json.Unmarshal(data, &run); err != nil {
-		return nil, "", err
-	}
-	if run.SchemaVersion != 1 {
-		return nil, "", fmt.Errorf("unsupported report version: %d", run.SchemaVersion)
-	}
-	return &run, dir, nil
+	run, err := storage.ReadRun(dir)
+	return run, dir, err
 }
