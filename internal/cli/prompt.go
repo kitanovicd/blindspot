@@ -13,7 +13,7 @@ import (
 )
 
 func (a *app) ask(ctx context.Context, label, fallback string) (string, error) {
-	fmt.Fprintf(a.out, "\n  %s", a.outStyle.Text(terminal.Emphasis, label))
+	fmt.Fprintf(a.out, "\n  %s", a.outStyle.Text(terminal.Heading, label))
 	if fallback != "" {
 		fmt.Fprintf(a.out, " [%s]", fallback)
 	}
@@ -68,8 +68,12 @@ func (a *app) choose(ctx context.Context, title string, choices []terminal.Choic
 		return terminal.Select(ctx, os.Stdin, a.out, title, choices, multi)
 	}
 	fmt.Fprintln(a.out, "\n  "+title)
+	fmt.Fprintln(a.out)
 	for i, choice := range choices {
-		fmt.Fprintf(a.out, "  %d. %s\n     %s\n", i+1, choice.Title, choice.Detail)
+		fmt.Fprintf(a.out, "  %d. %s\n", i+1, choice.Title)
+		if choice.Detail != "" {
+			fmt.Fprintf(a.out, "     %s\n", choice.Detail)
+		}
 	}
 	label := "Choose a number (q to cancel)"
 	if multi {
@@ -119,12 +123,13 @@ func (a *app) promptError(err error) int {
 }
 
 func (a *app) menu(ctx context.Context) int {
+	a.banner(a.out)
 	items := []terminal.Choice{
-		{Title: "Run Blindspot", Detail: "Find gaps in your Foundry tests"},
-		{Title: "Free up space", Detail: "Review saved runs and choose what to delete"},
-		{Title: "Open a saved report", Detail: "Browse reports from your projects"},
+		{Title: "Run mutation tests"},
+		{Title: "Free up space"},
+		{Title: "Open a saved report"},
 	}
-	choice, err := a.choose(ctx, "BLINDSPOT", items, false)
+	choice, err := a.choose(ctx, "Choose an action", items, false)
 	if err != nil {
 		return a.promptError(err)
 	}

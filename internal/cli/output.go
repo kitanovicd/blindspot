@@ -46,6 +46,6 @@ func statusColor(status string) terminal.Color {
 	case "invalid":
 		return terminal.Muted
 	default:
-		return terminal.Cyan
+		return terminal.Accent
 	}
 }

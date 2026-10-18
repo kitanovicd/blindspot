@@ -18,7 +18,7 @@ func (a *app) inventory(ctx context.Context, project string, measure bool) ([]st
 	if err != nil {
 		return nil, err
 	}
-	fmt.Fprintln(a.out, "\n  Storage  "+home)
+	fmt.Fprintln(a.out, "\n  Storage  "+a.outStyle.Text(terminal.Muted, home))
 	projects, err := storage.Projects(ctx)
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (a *app) reports(ctx context.Context, args []string) int {
 	}
 	if *list || !terminal.IsTerminal(os.Stdin) {
 		for _, entry := range ready {
-			fmt.Fprintf(a.out, "\n  %s\n  %s\n", runTitle(entry), filepath.Join(entry.Dir, "report.html"))
+			fmt.Fprintf(a.out, "\n  %s\n  %s\n", runTitle(entry), a.outStyle.Text(terminal.Muted, filepath.Join(entry.Dir, "report.html")))
 		}
 		return 0
 	}
@@ -103,7 +103,7 @@ func (a *app) reports(ctx context.Context, args []string) int {
 	if err := report.Open(file); err != nil {
 		return a.fail(err)
 	}
-	fmt.Fprintln(a.out, "\n  Opened "+file)
+	fmt.Fprintln(a.out, "\n  Opened "+a.outStyle.Text(terminal.Muted, file))
 	return 0
 }
 
@@ -173,7 +173,7 @@ func (a *app) clean(ctx context.Context, args []string) int {
 	}
 	fmt.Fprintln(a.out, "\n  Saved Blindspot files")
 	for _, entry := range entries {
-		fmt.Fprintf(a.out, "\n  %s · %s\n  %s\n", runTitle(entry), bytesLabel(entry.Bytes), entry.Dir)
+		fmt.Fprintf(a.out, "\n  %s · %s\n  %s\n", runTitle(entry), bytesLabel(entry.Bytes), a.outStyle.Text(terminal.Muted, entry.Dir))
 	}
 	interactive := terminal.IsTerminal(os.Stdin) && !*yes && !*dry
 	if interactive && !*all {
@@ -232,7 +232,7 @@ func (a *app) clean(ctx context.Context, args []string) int {
 			amount = entry.Bytes
 		}
 		total += amount
-		fmt.Fprintf(a.out, "  %s  %s\n", bytesLabel(amount), entry.Dir)
+		fmt.Fprintf(a.out, "  %s  %s\n", bytesLabel(amount), a.outStyle.Text(terminal.Muted, entry.Dir))
 	}
 	mode := "replay and temporary files; reports stay"
 	if *all {

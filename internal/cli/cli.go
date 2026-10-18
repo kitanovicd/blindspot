@@ -16,6 +16,7 @@ type app struct {
 	input              *bufio.Reader
 	out, errOut        io.Writer
 	outStyle, errStyle terminal.Style
+	bannerShown        bool
 	runner             *mutation.Runner
 }
 

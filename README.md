@@ -35,9 +35,9 @@ Open the menu:
 blindspot
 ```
 
-Choose **Run Blindspot**, **Free up space**, or **Open a saved report**. Use the arrow keys and Enter to navigate.
+Choose **Run mutation tests**, **Free up space**, or **Open a saved report**. Use the arrow keys and Enter to navigate.
 
-Starting a run asks for your project path, dependency installation command, build command, and test command. Use Forge directly, a Makefile, or a script—for example, `make deps`, `make build`, and `make test`. Then choose the files, mutation limit, and whether to keep replay files. Reports are always kept.
+Starting a run asks for your project path, dependency installation command, build command, and test command. Use Forge directly, a Makefile, or a script—for example, `make deps`, `make build`, and `make test`. Then choose the files, mutation limit, parallel workers, and whether to keep replay files. Reports are always kept.
 
 Dependencies and the initial build run in your project, so a fresh clone works too. The baseline and each mutation use the same build and test commands in separate copies. Commands are saved locally and offered as defaults next time.
 
@@ -55,12 +55,14 @@ blindspot run --project /path/to/project --all --open
 
 Blindspot first checks that the baseline build and tests pass. It then compiles and runs the configured tests for each mutation. Project layout comes from `foundry.toml`; Forge wrappers should invoke `forge` through PATH. See [custom commands](docs/usage.md#guided-setup-and-custom-commands) for automation.
 
-- Without `--limit` or `--all`, it evaluates up to **50 mutants**.
+- Guided setup defaults to **all mutations**. Runs using flags default to **50 mutants** unless you pass `--limit` or `--all`.
 - `--limit` is a maximum. If Gambit finds five mutations, `--limit 20` still evaluates five.
 - `--all` removes the mutant limit, but timeouts still apply.
 - Paths are relative to the project. Omit `--project` to use the current directory.
 
 Each mutant needs a build and test run. Start small on large projects.
+
+Guided setup asks how many workers to use and remembers your choice per project. The default is two workers (one on a single CPU). Use `--jobs 4` to evaluate up to four mutations in parallel; with `--interactive`, this skips the worker prompt and overrides the saved choice. More workers use more CPU and memory.
 
 ## Understand the report
 

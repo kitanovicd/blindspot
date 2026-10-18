@@ -62,7 +62,7 @@ filesLoop:
 						}
 					}
 					if found := len(mutations) - before; found > 0 {
-						r.logf("    Mutations found: %s", r.style.Text(terminal.Cyan, fmt.Sprint(found)))
+						r.logf("    Mutations found: %s", r.style.Text(terminal.Accent, fmt.Sprint(found)))
 					} else {
 						r.logf("    %s", r.style.Text(terminal.Muted, "No applicable mutations"))
 					}
@@ -74,7 +74,7 @@ filesLoop:
 		}
 	}
 	fmt.Fprintln(r.progress)
-	r.logf("  Total mutations: %s", r.style.Text(terminal.Cyan, fmt.Sprint(len(mutations))))
+	r.logf("  Total mutations: %s", r.style.Text(terminal.Accent, fmt.Sprint(len(mutations))))
 	r.logf("  %s", r.style.Text(terminal.Muted, fmt.Sprintf("Generation time: %s", time.Since(started).Round(time.Second))))
 	if len(failures) > 0 {
 		r.logf("  %s", r.style.Text(terminal.Red, "Could not process: "+sourceFileCount(len(failures))))

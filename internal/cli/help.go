@@ -35,10 +35,10 @@ const help = `
     --test-command CMD         Run tests during baseline and mutations
     --keep-artifacts=BOOL      Keep replay files (flags: true; guided setup asks)
     --project PATH             Foundry project directory (default: current)
-    --limit N                  Maximum mutants to evaluate (default: 50)
+    --limit N                  Maximum mutants (default: 50; guided setup: all)
     --all                      Evaluate all generated mutations in scope
     --line N                   Mutate one original line in the selected file
-    --jobs N                   Parallel workers (default: 2, bounded by CPUs)
+    --jobs N                   Parallel mutation workers, 1–64 (default: up to 2)
     --timeout SECONDS          Test execution limit (default: 120)
     --build-timeout SECONDS    Compilation limit (default: max of 600 and --timeout)
     --seed N                   Recorded mutation and fuzz seed (default: 42)

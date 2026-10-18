@@ -19,7 +19,7 @@ func (r *Runner) startEvaluationProgress(total int, snapshot func() report.Summa
 		unresolved := s.Timeout + s.Error
 		completed := s.Caught + s.Survived + s.Invalid + unresolved
 		parts := []string{
-			r.style.Text(terminal.Cyan, fmt.Sprintf("Progress  %d/%d completed", completed, total)),
+			r.style.Text(terminal.Accent, fmt.Sprintf("Progress  %d/%d completed", completed, total)),
 			r.style.Count(terminal.Green, s.Caught, "caught"),
 			r.style.Count(terminal.Yellow, s.Survived, "survived"),
 		}

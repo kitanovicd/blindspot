@@ -39,8 +39,11 @@ Run `blindspot` in a terminal to choose between running mutation tests, freeing 
 2. A dependency installation command, such as `git submodule update --init --recursive`, or `skip`.
 3. A build command, such as `forge build` or `make build`.
 4. A test command, such as `forge test` or `make test`.
-5. The source scope, mutation limit, and whether to open the report.
-6. Whether to keep project copies and mutation files for replay (default: no, remembered per project).
+5. The source scope and mutation limit (press Enter to evaluate all mutations).
+6. The number of parallel workers (1–64; default 2, or 1 on a single CPU; remembered per project).
+7. Whether to open the report and keep project copies and mutation files for replay (keeping replay files defaults to no and is remembered per project).
+
+Each worker builds and tests one mutation at a time. More workers use more CPU and memory. Passing `--jobs N` skips the worker prompt and overrides the saved choice. Runs without guided setup use the flag or the default worker count.
 
 Dependency installation and the initial build run in the original project, before reading compiler configuration or taking a snapshot. These commands can change project files. Dependencies are installed once; the build and test commands run again for the baseline and every mutation inside separate project copies. Setup and builds use `--build-timeout`; each test command uses `--timeout`. Command output is saved in the run's `logs/` directory.
 
@@ -81,7 +84,7 @@ blindspot run --project /path/to/project --changed origin/main
 
 Targets are relative to the project root. Quote patterns so your shell does not expand them first. `--line` requires one source file. `--changed` selects whole files, including staged, unstaged, and untracked changes; it still runs the full configured test suite.
 
-The default sample is up to 50 mutants. `--limit N` sets a maximum; `--all` evaluates every mutation Gambit generates in the selected scope. One line may have several mutations, and unsupported or unmutated locations remain unassessed.
+Guided setup defaults to all mutations. Without guided setup, the default sample is up to 50 mutants. `--limit N` sets a maximum; `--all` evaluates every mutation Gambit generates in the selected scope. One line may have several mutations, and unsupported or unmutated locations remain unassessed.
 
 ## Run options
 
@@ -94,11 +97,11 @@ The default sample is up to 50 mutants. `--limit N` sets a maximum; `--all` eval
 | `--test-command CMD` | Tests during baseline, mutations, and replay; default Forge. |
 | `--keep-artifacts=BOOL` | Retain replay files; true for noninteractive runs, guided setup asks. |
 | `--profile NAME` | Foundry profile; `FOUNDRY_PROFILE` or `default`. |
-| `--limit N` | Maximum mutants; 50 by default. |
+| `--limit N` | Maximum mutants; guided setup defaults to all, other runs to 50. |
 | `--all` | Remove the mutant count limit. |
 | `--line N` | Restrict mutations to one original line in one selected file. |
 | `--changed REF` | Select source files changed since a Git ref. |
-| `--jobs N` | Parallel workers; default 2, bounded by available CPUs. |
+| `--jobs N` | Parallel mutation workers; 1–64, default 2 (1 on a single CPU). |
 | `--timeout SECONDS` | Time allowed per test process after compilation; default 120. |
 | `--build-timeout SECONDS` | Time allowed per build; default is the larger of 600 and `--timeout`. |
 | `--seed N` | Mutation sampling and Forge fuzz seed; default 42. |

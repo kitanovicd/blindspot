@@ -38,10 +38,22 @@ func Select(ctx context.Context, input *os.File, output io.Writer, title string,
 	defer fmt.Fprint(output, "\x1b[?25h")
 	selected, drawn := 0, 0
 	marked := make([]bool, len(choices))
-	draw := func() {
-		if drawn > 0 {
-			fmt.Fprintf(output, "\x1b[%dA", drawn)
+	style := For(output)
+	clear := func() {
+		if drawn == 0 {
+			return
 		}
+		var frame strings.Builder
+		fmt.Fprintf(&frame, "\x1b[%dA\r", drawn)
+		for range drawn {
+			frame.WriteString("\x1b[2K\n")
+		}
+		fmt.Fprintf(&frame, "\x1b[%dA\r", drawn)
+		fmt.Fprint(output, frame.String())
+		drawn = 0
+	}
+	defer clear()
+	draw := func() {
 		var window struct{ Rows, Cols, X, Y uint16 }
 		syscall.Syscall(syscall.SYS_IOCTL, fd, syscall.TIOCGWINSZ, uintptr(unsafe.Pointer(&window)))
 		width, rows := int(window.Cols), int(window.Rows)
@@ -51,18 +63,28 @@ func Select(ctx context.Context, input *os.File, output io.Writer, title string,
 		if rows < 8 {
 			rows = 24
 		}
-		count := min(len(choices), min(8, rows-6))
-		first := max(0, min(selected-count/2, len(choices)-count))
-		lines := []string{"", "  " + title}
-		help := "  ↑/↓ move · Enter select · Esc cancel"
-		if multi {
-			help = "  ↑/↓ move · Space select · A select all · Enter continue · Esc cancel"
+		help := selectionHelp(multi, width-3)
+		detail := choices[selected].Detail
+		overhead := 4 + len(help)
+		if detail != "" {
+			overhead += 2
 		}
-		lines = append(lines, help, "")
+		count := min(len(choices), min(8, max(1, rows-overhead-1)))
+		first := max(0, min(selected-count/2, len(choices)-count))
+		type line struct {
+			text  string
+			color Color
+		}
+		lines := []line{{}, {"  " + title, Heading}, {}}
 		for i := first; i < first+count; i++ {
 			prefix := "  "
+			var color Color
+			if multi && marked[i] {
+				color = Green
+			}
 			if i == selected {
 				prefix = "> "
+				color = Selected
 			}
 			if multi {
 				if marked[i] {
@@ -71,12 +93,33 @@ func Select(ctx context.Context, input *os.File, output io.Writer, title string,
 					prefix += "[ ] "
 				}
 			}
-			lines = append(lines, "  "+prefix+choices[i].Title)
+			lines = append(lines, line{"  " + prefix + choices[i].Title, color})
 		}
-		lines = append(lines, "  "+choices[selected].Detail)
-		for _, line := range lines {
-			fmt.Fprintf(output, "\r\x1b[2K%s\n", clip(line, width-1))
+		if detail != "" {
+			lines = append(lines, line{}, line{"    " + detail, Muted})
 		}
+		lines = append(lines, line{})
+		for _, hint := range help {
+			lines = append(lines, line{"  " + hint, Muted})
+		}
+		var frame strings.Builder
+		if drawn > 0 {
+			fmt.Fprintf(&frame, "\x1b[%dA", drawn)
+		}
+		for _, row := range lines {
+			text := clip(row.text, width-1)
+			if row.color != "" {
+				text = style.Text(row.color, text)
+			}
+			fmt.Fprintf(&frame, "\r\x1b[2K%s\n", text)
+		}
+		if extra := drawn - len(lines); extra > 0 {
+			for range extra {
+				frame.WriteString("\r\x1b[2K\n")
+			}
+			fmt.Fprintf(&frame, "\x1b[%dA", extra)
+		}
+		fmt.Fprint(output, frame.String())
 		drawn = len(lines)
 	}
 	draw()
@@ -156,6 +199,25 @@ func Select(ctx context.Context, input *os.File, output io.Writer, title string,
 		}
 		draw()
 	}
+}
+
+// Keep each shortcut together when the terminal needs more than one help line.
+func selectionHelp(multi bool, width int) []string {
+	hints := []string{"↑/↓ move", "Enter select", "Esc cancel"}
+	if multi {
+		hints = []string{"↑/↓ move", "Space toggle", "A toggle all", "Enter confirm", "Esc cancel"}
+	}
+	lines := []string{hints[0]}
+	for _, hint := range hints[1:] {
+		last := len(lines) - 1
+		joined := lines[last] + " · " + hint
+		if clip(joined, width) == joined {
+			lines[last] = joined
+		} else {
+			lines = append(lines, hint)
+		}
+	}
+	return lines
 }
 
 func clip(text string, width int) string {

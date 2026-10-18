@@ -12,7 +12,6 @@ import (
 
 	"github.com/kitanovicd/blindspot/internal/mutation"
 	"github.com/kitanovicd/blindspot/internal/storage"
-	"github.com/kitanovicd/blindspot/internal/terminal"
 	"github.com/kitanovicd/blindspot/internal/toolchain"
 )
 
@@ -20,12 +19,14 @@ type projectSettings struct {
 	Install       string `json:"install_command"`
 	Build         string `json:"build_command"`
 	Test          string `json:"test_command"`
+	Jobs          int    `json:"jobs,omitempty"`
 	KeepArtifacts *bool  `json:"keep_artifacts,omitempty"`
 }
 
 func (a *app) guide(ctx context.Context, opts *mutation.Options, open *bool, flags *flag.FlagSet) error {
 	ask := func(label, fallback string) (string, error) { return a.ask(ctx, label, fallback) }
-	fmt.Fprintf(a.out, "\n  %s\n  Let's set up your Foundry project. Press Enter to use a default.\n", a.outStyle.Text(terminal.Heading, "BLINDSPOT"))
+	a.banner(a.out)
+	fmt.Fprintln(a.out, "  Let's set up your Foundry project. Press Enter to use a default.")
 	for {
 		path, err := ask("Where is the project?", opts.Project)
 		if err != nil {
@@ -108,7 +109,7 @@ func (a *app) guide(ctx context.Context, opts *mutation.Options, open *bool, fla
 	}
 	if !provided["limit"] && !provided["all"] {
 		for {
-			value, err := ask("Maximum mutations? (0 for all)", strconv.Itoa(opts.Limit))
+			value, err := ask("Maximum mutations? (0 for all)", "0")
 			if err != nil {
 				return err
 			}
@@ -118,6 +119,23 @@ func (a *app) guide(ctx context.Context, opts *mutation.Options, open *bool, fla
 				break
 			}
 			fmt.Fprintln(a.out, "  Enter a number greater than or equal to zero.")
+		}
+	}
+	if !provided["jobs"] {
+		if settings.Jobs >= 1 && settings.Jobs <= 64 {
+			opts.Jobs = settings.Jobs
+		}
+		for {
+			value, err := ask("How many parallel workers? (1–64)", strconv.Itoa(opts.Jobs))
+			if err != nil {
+				return err
+			}
+			jobs, err := strconv.Atoi(value)
+			if err == nil && jobs >= 1 && jobs <= 64 {
+				opts.Jobs = jobs
+				break
+			}
+			fmt.Fprintln(a.out, "  Enter a whole number from 1 to 64.")
 		}
 	}
 	if !provided["open"] {
@@ -145,6 +163,7 @@ func (a *app) guide(ctx context.Context, opts *mutation.Options, open *bool, fla
 		}
 	}
 	settings.KeepArtifacts = &opts.KeepArtifacts
+	settings.Jobs = opts.Jobs
 	if err := opts.Validate(); err != nil {
 		return err
 	}
