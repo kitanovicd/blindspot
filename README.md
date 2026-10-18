@@ -6,16 +6,12 @@ Blindspot changes your Solidity code one mutation at a time in separate project 
 
 ## Preview
 
-A run against a small demo contract: all three tests pass, but removing the deposit-limit check goes undetected. The report highlights the affected line and shows the exact changes that survived.
-
-![Blindspot report highlighting an untested deposit-limit check and two surviving mutations](docs/images/report.png)
+![Blindspot report highlighting three lines with test coverage gaps](docs/images/report.png)
 
 <details>
-<summary>See the terminal output from the same run</summary>
+<summary>Terminal output</summary>
 
-The terminal shows build and test progress, mutation counts, and the final results.
-
-![Blindspot terminal output showing a completed run with 9 caught mutations and 2 survivors](docs/images/terminal.png)
+![Blindspot terminal output showing progress and a completed run with three lines with test gaps](docs/images/terminal.png)
 
 </details>
 
