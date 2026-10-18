@@ -63,6 +63,9 @@ type Run struct {
 	Solc                string            `json:"solc"`
 	TimeoutSeconds      int               `json:"timeout_seconds"`
 	BuildTimeoutSeconds int               `json:"build_timeout_seconds"`
+	InstallCommand      string            `json:"install_command,omitempty"`
+	BuildCommand        string            `json:"build_command,omitempty"`
+	TestCommand         string            `json:"test_command,omitempty"`
 	Baseline            Baseline          `json:"baseline"`
 	Files               map[string]string `json:"files"`
 	Mutations           []Mutation        `json:"mutations"`

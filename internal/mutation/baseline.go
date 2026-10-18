@@ -37,13 +37,9 @@ func (r *Runner) runBaseline(ctx context.Context, worker, root, solc string, cfg
 		b.DurationMS = b.BuildDurationMS + b.TestDurationMS
 		return b, fmt.Errorf("%s. See %s", strings.TrimRight(reason, ". "), filepath.Join(logs, b.Phase))
 	}
-	args, err := forgeArgs("build", worker, root, solc, cfg, opts.Seed)
-	if err != nil {
-		return stop("error", err.Error(), processResult{})
-	}
 	buildLimit := time.Duration(opts.buildTimeoutSeconds()) * time.Second
 	build := r.progressStep("Compiling original project", buildLimit, func() processResult {
-		return execute(ctx, "forge", args, worker, filepath.Join(logs, "build"), buildLimit, opts.Profile, workerEnv(cfg, root, worker))
+		return runForge(ctx, "build", worker, root, solc, cfg, opts, filepath.Join(logs, "build"))
 	})
 	b.BuildDurationMS = build.DurationMS
 	if build.Cancelled {
@@ -57,13 +53,9 @@ func (r *Runner) runBaseline(ctx context.Context, worker, root, solc string, cfg
 	}
 	r.logf("  %s in %s", r.style.Text(terminal.Green, "Compilation finished"), time.Duration(build.DurationMS)*time.Millisecond)
 	b.Phase = "test"
-	args, err = forgeArgs("test", worker, root, solc, cfg, opts.Seed)
-	if err != nil {
-		return stop("error", err.Error(), processResult{})
-	}
 	testLimit := time.Duration(opts.Timeout) * time.Second
 	result := r.progressStep("Running original tests", testLimit, func() processResult {
-		return execute(ctx, "forge", args, worker, filepath.Join(logs, "test"), testLimit, opts.Profile, workerEnv(cfg, root, worker))
+		return runForge(ctx, "test", worker, root, solc, cfg, opts, filepath.Join(logs, "test"))
 	})
 	b.TestDurationMS = result.DurationMS
 	status, reason, tests := classify(result)

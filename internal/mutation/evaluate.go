@@ -46,14 +46,8 @@ func testMutant(ctx context.Context, worker, root, runDir, solc string, cfg foun
 		m.Reason = err.Error()
 		return m
 	}
-	buildArgs, err := forgeArgs("build", worker, root, solc, cfg, opts.Seed)
-	if err != nil {
-		m.Status = "error"
-		m.Reason = err.Error()
-		return m
-	}
-	build := execute(ctx, "forge", buildArgs, worker, filepath.Join(logs, "build"), time.Duration(opts.buildTimeoutSeconds())*time.Second, opts.Profile, workerEnv(cfg, root, worker))
-	if build.Code != 0 || build.Timeout || build.Cancelled {
+	build := runForge(ctx, "build", worker, root, solc, cfg, opts, filepath.Join(logs, "build"))
+	if build.Code != 0 || build.Err != nil || build.Timeout || build.Cancelled {
 		m.Status = "error"
 		m.Reason = "Compilation process failed"
 		m.Log = shortLog(combined(build))
@@ -70,13 +64,7 @@ func testMutant(ctx context.Context, worker, root, runDir, solc string, cfg foun
 		m.DurationMS = time.Since(start).Milliseconds()
 		return m
 	}
-	args, err := forgeArgs("test", worker, root, solc, cfg, opts.Seed)
-	if err != nil {
-		m.Status = "error"
-		m.Reason = err.Error()
-		return m
-	}
-	result := execute(ctx, "forge", args, worker, filepath.Join(logs, "test"), time.Duration(opts.Timeout)*time.Second, opts.Profile, workerEnv(cfg, root, worker))
+	result := runForge(ctx, "test", worker, root, solc, cfg, opts, filepath.Join(logs, "test"))
 	status, reason, tests := classify(result)
 	m.Status = status
 	m.Reason = reason

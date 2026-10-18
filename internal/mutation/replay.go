@@ -64,6 +64,7 @@ func (r *Runner) Replay(ctx context.Context, input ReplayOptions) (report.Mutati
 	r.logf("Replaying %s against the original saved snapshot", selected.ID)
 	replayLogs := filepath.Join(dir, "replay-logs", filepath.Base(worker))
 	opts := Options{Seed: run.Seed, Profile: run.Profile, Timeout: seconds, BuildTimeout: run.BuildTimeoutSeconds, replayLogs: replayLogs}
+	opts.BuildCommand, opts.TestCommand = run.BuildCommand, run.TestCommand
 	if input.BuildTimeout > 0 {
 		opts.BuildTimeout = input.BuildTimeout
 	} else if input.Timeout > 0 {

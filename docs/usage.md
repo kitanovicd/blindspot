@@ -4,7 +4,7 @@ See the [README](../README.md) for installation and a first run.
 
 ## Installation options
 
-With Homebrew, use `brew install kitanovicd/tap/blindspot`, then `blindspot setup`. Homebrew installs the binary on your PATH and verifies its release checksum. Update with `brew update && brew upgrade blindspot`; remove it with `brew uninstall blindspot`. Uninstalling keeps saved project reports and the Gambit cache.
+With Homebrew, use `brew install kitanovicd/tap/blindspot`, then `blindspot`. Homebrew installs the binary on your PATH and verifies its release checksum. Update with `brew update && brew upgrade blindspot`; remove it with `brew uninstall blindspot`. Uninstalling keeps saved project reports and the Gambit cache.
 
 The standalone installer uses `~/.local/bin` and never changes your shell configuration or requires sudo. Run it again to update, or choose a directory and version:
 
@@ -27,9 +27,37 @@ If you set `GOBIN`, use that directory on PATH instead. `blindspot version` prin
 
 `blindspot setup` downloads Gambit v1.0.6 and checks its pinned SHA-256 hash. Managed tools live in `~/Library/Caches/blindspot/tools` on macOS and `$XDG_CACHE_HOME/blindspot/tools` (usually `~/.cache/blindspot/tools`) on Linux. Set `BLINDSPOT_TOOLS_DIR` to override this location; keep it set when running Blindspot. If you clear the cache, run `blindspot setup` again.
 
-An explicit `--gambit` takes precedence, followed by the managed installation, your PATH, and `.tools` beside the executable (for source checkouts). Foundry and Solidity compilers are installed separately; run `forge build` in your project before `blindspot doctor`.
+An explicit `--gambit` takes precedence, followed by the managed installation, your PATH, and `.tools` beside the executable (for source checkouts). Install Foundry separately. Guided setup builds the project before compiler discovery so Forge can install the required Solidity compiler. Use `blindspot doctor --project /path/to/project` to inspect an existing setup.
 
 To uninstall the default installation, remove `~/.local/bin/blindspot` and, optionally, the Blindspot tools cache. Saved reports stay in each project's `.blindspot/` directory.
+
+## Guided setup and custom commands
+
+Run `blindspot` or bare `blindspot run` in a terminal. It asks for:
+
+1. The Foundry project path.
+2. A dependency installation command, such as `git submodule update --init --recursive`, or `skip`.
+3. A build command, such as `forge build` or `make build`.
+4. A test command, such as `forge test` or `make test`.
+5. The source scope, mutation limit, and whether to open the report.
+
+Dependency installation and the initial build run in the original project, before reading compiler configuration or taking a snapshot. These commands can change project files. Dependencies are installed once; the build and test commands run again for the baseline and every mutation inside separate project copies. Setup and builds use `--build-timeout`; each test command uses `--timeout`. Command output is saved in the run's `logs/` directory.
+
+Commands run through `/bin/sh` from the project root. Shell operators, Makefiles, and executable scripts work; interactive shell aliases do not. Wrappers must invoke `forge` through PATH and work without Git metadata in the copies. Blindspot supplies the compiler, copy-local paths, fuzz seed, and JSON output automatically. Test filters are preserved, and multiple Forge test invocations are supported. A successful shell exit without executed Forge tests fails the baseline. Keep the Foundry layout and compiler configuration in `foundry.toml`, and select profiles with `--profile`.
+
+The project path can contain spaces or start with `~`. Sources, tests, dependencies, and build directories follow the project's Foundry configuration rather than a hardcoded `src/` or `test/` layout. Dependencies must still live inside the selected project root.
+
+Commands are stored in `PROJECT/.blindspot/settings.json` and shown as prompt defaults on the next guided run. Noninteractive runs do not read saved commands. Keep secrets in environment variables rather than command text; commands are also recorded with the results for replay.
+
+Use `--interactive` to request the prompts explicitly, or pass commands directly for CI:
+
+```sh
+blindspot run --project /path/to/project --limit 5 \
+  --install-command 'git submodule update --init --recursive' \
+  --build-command 'make build' --test-command 'make test'
+```
+
+Omit `--install-command` to skip dependency installation. Runs with no custom command flags retain the direct Forge workflow and expect a prepared project. Bare `blindspot` prints help when stdin is not a terminal. `--interactive` and `--json` cannot be combined.
 
 ## Choose what to mutate
 
@@ -57,6 +85,10 @@ The default sample is up to 50 mutants. `--limit N` sets a maximum; `--all` eval
 | Option | Purpose and default |
 | --- | --- |
 | `--project PATH` | Foundry project root; current directory by default. |
+| `--interactive` | Ask for project setup and mutation scope. |
+| `--install-command CMD` | Dependency installation; runs once in the original project. |
+| `--build-command CMD` | Build during setup, baseline, mutations, and replay; default Forge. |
+| `--test-command CMD` | Tests during baseline, mutations, and replay; default Forge. |
 | `--profile NAME` | Foundry profile; `FOUNDRY_PROFILE` or `default`. |
 | `--limit N` | Maximum mutants; 50 by default. |
 | `--all` | Remove the mutant count limit. |
@@ -122,7 +154,7 @@ Ctrl+C stops active processes and preserves completed results. Pending mutations
 blindspot replay MUTATION_ID --project /path/to/project --run RUN_ID
 ```
 
-Omit `--run` to use the latest run. Replay rechecks the original baseline, then evaluates the mutation using the saved source/tests, profile, seed, tool paths, and FFI permission. It does not evaluate your current working files.
+Omit `--run` to use the latest run. Replay rechecks the original baseline, then evaluates the mutation using the saved source/tests, build and test commands, profile, seed, tool paths, and FFI permission. It does not reinstall dependencies or evaluate your current working files.
 
 The saved tools must remain available. Environment variables and RPC responses are not frozen. Use `--timeout SECONDS` or `--build-timeout SECONDS` to override the recorded limits, or start a new run to evaluate changed source or tests.
 

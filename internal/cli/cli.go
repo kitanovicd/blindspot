@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/kitanovicd/blindspot/internal/mutation"
 	"github.com/kitanovicd/blindspot/internal/terminal"
@@ -30,6 +31,9 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		runner: mutation.NewRunner(stderr),
 	}
 	if len(args) == 0 {
+		if terminal.IsTerminal(os.Stdin) {
+			return a.run(ctx, []string{"--interactive"})
+		}
 		return a.text(help)
 	}
 	switch args[0] {
@@ -38,7 +42,12 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case "version", "--version":
 		return a.text("blindspot " + buildVersion() + " (Go · Gambit v1.0.6)\n")
 	case "run":
+		if len(args) == 1 && terminal.IsTerminal(os.Stdin) {
+			return a.run(ctx, []string{"--interactive"})
+		}
 		return a.run(ctx, args[1:])
+	case "_forge":
+		return mutation.ForwardForge(ctx, args[1:], os.Stdin, a.out, a.errOut)
 	case "report":
 		return a.report(ctx, args[1:])
 	case "replay":

@@ -16,7 +16,7 @@ import (
 func (a *app) run(ctx context.Context, args []string) int {
 	f := a.flags("run")
 	var opts mutation.Options
-	var all, jsonOut, open, failOnSurvivors bool
+	var all, jsonOut, open, failOnSurvivors, interactive bool
 	f.StringVar(&opts.Project, "project", ".", "Foundry project directory")
 	f.StringVar(&opts.Gambit, "gambit", "", "Gambit executable")
 	f.StringVar(&opts.Solc, "solc", "", "Native solc executable")
@@ -33,12 +33,27 @@ func (a *app) run(ctx context.Context, args []string) int {
 	f.BoolVar(&failOnSurvivors, "fail-on-survivors", false, "Fail CI if mutations survive")
 	f.BoolVar(&jsonOut, "json", false, "JSON results")
 	f.StringVar(&opts.Changed, "changed", "", "Git ref for changed files")
+	f.BoolVar(&interactive, "interactive", false, "Ask for the project and setup commands")
+	f.StringVar(&opts.InstallCommand, "install-command", "", "Dependency installation command, run once in the original project")
+	f.StringVar(&opts.BuildCommand, "build-command", "", "Build command, used for setup and each mutation")
+	f.StringVar(&opts.TestCommand, "test-command", "", "Test command, used for the baseline and each mutation")
 	if err := parseFlags(f, args); err != nil {
 		return flagExit(err)
 	}
 	opts.Targets = f.Args()
 	if all {
 		opts.Limit = 0
+	}
+	if interactive {
+		if jsonOut {
+			return a.fail(fmt.Errorf("--interactive cannot be combined with --json"))
+		}
+		if err := a.guide(ctx, &opts, &open, f); err != nil {
+			if ctx.Err() != nil {
+				return 130
+			}
+			return a.fail(err)
+		}
 	}
 	if err := opts.Validate(); err != nil {
 		return a.fail(err)

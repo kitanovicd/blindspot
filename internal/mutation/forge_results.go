@@ -15,6 +15,9 @@ import (
 // The stdout tail is only a diagnostic excerpt. Test evidence must come from
 // the complete file, since verbose Forge output can contain large trace arrays.
 func processTests(result processResult) ([]report.TestResult, error) {
+	if result.ResultsDir != "" {
+		return readCommandResults(result.ResultsDir)
+	}
 	if result.StdoutFile == "" {
 		return readForgeResults(strings.NewReader(result.Stdout))
 	}

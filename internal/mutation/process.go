@@ -14,6 +14,7 @@ type processResult struct {
 	Code               int
 	Stdout, Stderr     string
 	StdoutFile         string
+	ResultsDir         string
 	Timeout, Cancelled bool
 	DurationMS         int64
 	Err                error

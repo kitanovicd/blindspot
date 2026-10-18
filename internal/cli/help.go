@@ -6,6 +6,7 @@ const help = `
   Run your tests against Gambit mutations. See the gaps at the source.
 
   Commands
+    (no command)               Start guided setup in a terminal
     run [files/directories]    Evaluate mutations and save a browser report
     report                     Open the latest report (no server required)
     replay <mutation-id>       Re-test one mutation from the saved snapshot
@@ -14,7 +15,7 @@ const help = `
     version                    Print the version
 
   Examples
-    blindspot run
+    blindspot
     blindspot run src/Vault.sol --limit 30 --open
     blindspot run src/Vault.sol --line 16 --all
     blindspot run --changed origin/main --jobs 2
@@ -22,6 +23,10 @@ const help = `
     blindspot replay m-0123456789ab
 
   Run options
+    --interactive              Ask for the project and setup commands
+    --install-command CMD      Install dependencies once in the original project
+    --build-command CMD        Compile during setup, baseline, and mutations
+    --test-command CMD         Run tests during baseline and mutations
     --project PATH             Foundry project directory (default: current)
     --limit N                  Maximum mutants to evaluate (default: 50)
     --all                      Evaluate all generated mutations in scope
@@ -42,6 +47,6 @@ const help = `
   Exit codes: 0 complete · 1 setup/baseline failure · 2 survivors (opt-in)
               3 incomplete evaluation · 130 interrupted
 
-  Reports stay in PROJECT/.blindspot/. Source files are never replaced in-place.
+  Reports stay in PROJECT/.blindspot/. Mutations run in separate project copies.
   Full docs: https://github.com/kitanovicd/blindspot#readme
 `

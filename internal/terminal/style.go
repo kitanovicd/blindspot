@@ -23,6 +23,9 @@ const (
 // Style is bound to one output stream. Its zero value emits plain text.
 type Style struct{ enabled bool }
 
+// IsTerminal reports whether a stream supports interactive terminal input.
+func IsTerminal(file *os.File) bool { return isTerminal(file) }
+
 // For enables color only on a terminal, unless NO_COLOR or TERM=dumb disables it.
 func For(w io.Writer) Style {
 	if _, disabled := os.LookupEnv("NO_COLOR"); disabled || os.Getenv("TERM") == "dumb" {

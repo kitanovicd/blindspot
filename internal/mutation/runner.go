@@ -47,7 +47,7 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	if err := opts.Validate(); err != nil {
 		return nil, "", err
 	}
-	root, err := findProject(opts.Project)
+	root, err := ProjectRoot(opts.Project)
 	if err != nil {
 		return nil, "", err
 	}
@@ -56,6 +56,11 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	runDir := filepath.Join(root, ".blindspot", "runs", id)
 	if err = os.MkdirAll(runDir, 0700); err != nil {
 		return nil, "", err
+	}
+	if opts.InstallCommand != "" || opts.BuildCommand != "" || opts.TestCommand != "" {
+		if err := r.prepareProject(ctx, root, filepath.Join(runDir, "logs", "setup"), opts); err != nil {
+			return nil, runDir, err
+		}
 	}
 	cfg, err := loadFoundry(ctx, root, filepath.Join(runDir, "logs", "config"), opts.Profile)
 	if err != nil {
@@ -98,6 +103,9 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 		Gambit:         gambit,
 		Solc:           solc,
 		TimeoutSeconds: opts.Timeout,
+		InstallCommand: opts.InstallCommand,
+		BuildCommand:   opts.BuildCommand,
+		TestCommand:    opts.TestCommand,
 		Files:          map[string]string{},
 		Mutations:      []report.Mutation{},
 		Errors:         []string{},
@@ -177,7 +185,7 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	}
 	workerCount := min(opts.Jobs, len(run.Mutations))
 	r.section("Evaluate")
-	r.logf("  %d mutations · %d workers · full test suite", len(run.Mutations), workerCount)
+	r.logf("  %d mutations · %d workers · configured test suite", len(run.Mutations), workerCount)
 	workers, err := prepareWorkers(snapshot, runDir, workerCount)
 	if err != nil {
 		run.State = "incomplete"

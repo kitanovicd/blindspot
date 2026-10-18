@@ -11,6 +11,9 @@ type Options struct {
 	Seed                           uint64
 	AllowFFI                       bool
 	Changed                        string
+	InstallCommand                 string
+	BuildCommand                   string
+	TestCommand                    string
 	replayLogs                     string
 }
 
