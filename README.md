@@ -4,6 +4,21 @@ Find gaps in your Foundry tests with [Certora Gambit](https://github.com/Certora
 
 Blindspot changes your Solidity code one mutation at a time in separate project copies, runs your existing tests, and shows which changes went undetected in a local browser report. It does not generate or fix tests.
 
+## Preview
+
+A run against a small demo contract: all three tests pass, but removing the deposit-limit check goes undetected. The report highlights the affected line and shows the exact changes that survived.
+
+![Blindspot report highlighting an untested deposit-limit check and two surviving mutations](docs/images/report.png)
+
+<details>
+<summary>See the terminal output from the same run</summary>
+
+The terminal shows build and test progress, mutation counts, and the final results.
+
+![Blindspot terminal output showing a completed run with 9 caught mutations and 2 survivors](docs/images/terminal.png)
+
+</details>
+
 ## Install
 
 Requires **[Foundry](https://getfoundry.sh/)** (`forge` on your PATH). No Go installation is needed.
