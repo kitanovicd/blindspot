@@ -89,30 +89,8 @@ Replay uses the saved project snapshot. Start a new run to evaluate changed code
 
 See the **[usage guide](docs/usage.md)** for flags, timeouts, FFI, CI, exporting reports, and compatibility. Use `blindspot COMMAND --help` for command options.
 
-## Development
+## Contributing
 
-Clone the repository and use Go 1.23+. There are no third-party Go dependencies.
-
-```sh
-make build    # Build ./blindspot
-make install  # Install into Go's bin directory
-make fmt      # Format Go code
-make check    # Run go vet and build
-```
-
-```text
-main.go               Entry point and signal handling
-internal/cli/         Commands, flags, and terminal output
-internal/mutation/    Generation, execution, snapshots, and replay
-internal/report/      Result model, embedded HTML, and local server
-internal/terminal/    Terminal detection and optional colors
-internal/toolchain/   Gambit installation and compiler discovery
-docs/                 Usage reference
-scripts/              Release packaging
-```
-
-To publish, push a version tag such as `v0.1.0`, or run the Release workflow manually for an existing tag. The workflow builds the binaries and publishes archives with SHA-256 checksums. `make release VERSION=v0.1.0` builds the same archives locally in `dist/`.
-
-After publishing, update the [Homebrew formula](https://github.com/kitanovicd/homebrew-tap#maintaining-the-formula) with the new release version and checksums.
+All contributions are welcome. [Open an issue](https://github.com/kitanovicd/blindspot/issues) to report a bug or suggest an improvement, or [submit a pull request](https://github.com/kitanovicd/blindspot/pulls) to help improve the tool.
 
 Blindspot is independent of Certora, Foundry, and Solidity. See [third-party notices](THIRD_PARTY_NOTICES.md) and [license](LICENSE).
