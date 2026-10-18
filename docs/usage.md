@@ -146,7 +146,7 @@ Each run lives in `PROJECT/.blindspot/runs/RUN_ID/`:
 | `logs/` | Baseline, generation, build, and test logs. |
 | `replay-logs/` | Logs from subsequent replays. |
 
-Ctrl+C stops active processes and preserves completed results. Pending mutations remain marked as not run. Individual mutants can be replayed, but interrupted batches cannot yet be resumed. Worker copies are cleaned up; saved snapshots remain until you delete their run directories.
+Ctrl+C stops active processes and preserves completed results without opening the browser, even with `--open`. Use `blindspot report` to open those results later. Pending mutations remain marked as not run. Individual mutants can be replayed, but interrupted batches cannot yet be resumed. Worker copies are cleaned up; saved snapshots remain until you delete their run directories.
 
 ## Replay a mutation
 

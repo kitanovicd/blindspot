@@ -68,7 +68,7 @@ func (a *app) run(ctx context.Context, args []string) int {
 		} else {
 			a.printSummary(run, dir)
 		}
-		if open && reportExists(dir) {
+		if open && ctx.Err() == nil && reportExists(dir) {
 			_ = report.Open(filepath.Join(dir, "report.html"))
 		}
 	}
