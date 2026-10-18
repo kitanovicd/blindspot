@@ -52,6 +52,8 @@ type Run struct {
 	StartedAt           time.Time         `json:"started_at"`
 	DurationMS          int64             `json:"duration_ms"`
 	State               string            `json:"state"`
+	ManagedLifecycle    bool              `json:"managed_lifecycle,omitempty"`
+	ArtifactsRemoved    bool              `json:"artifacts_removed,omitempty"`
 	Seed                uint64            `json:"seed"`
 	Limit               int               `json:"limit"`
 	Candidates          int               `json:"candidates"`

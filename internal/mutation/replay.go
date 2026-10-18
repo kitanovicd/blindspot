@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kitanovicd/blindspot/internal/report"
+	"github.com/kitanovicd/blindspot/internal/storage"
 )
 
 // ReplayOptions selects a saved mutant and optional timeout overrides in seconds.
@@ -24,9 +25,17 @@ func (r *Runner) Replay(ctx context.Context, input ReplayOptions) (report.Mutati
 	if err != nil {
 		return report.Mutation{}, err
 	}
+	unlock, err := storage.LockProject(root, false)
+	if err != nil {
+		return report.Mutation{}, err
+	}
+	defer unlock()
 	run, dir, err := LoadRun(root, input.RunID)
 	if err != nil {
 		return report.Mutation{}, err
+	}
+	if run.ArtifactsRemoved {
+		return report.Mutation{}, fmt.Errorf("replay files were cleaned for run %s; start a new run with --keep-artifacts", run.ID)
 	}
 	var selected *report.Mutation
 	for i := range run.Mutations {

@@ -7,20 +7,11 @@ import (
 	"path/filepath"
 
 	"github.com/kitanovicd/blindspot/internal/report"
+	"github.com/kitanovicd/blindspot/internal/storage"
 )
 
 func writeJSON(file string, value any) error {
-	data, err := json.MarshalIndent(value, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
-		return err
-	}
-	if err = os.WriteFile(file+".tmp", data, 0600); err != nil {
-		return err
-	}
-	return os.Rename(file+".tmp", file)
+	return storage.WriteJSON(file, value)
 }
 
 func saveRun(root, dir string, run *report.Run) error {

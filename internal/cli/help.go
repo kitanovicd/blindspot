@@ -6,9 +6,11 @@ const help = `
   Run your tests against Gambit mutations. See the gaps at the source.
 
   Commands
-    (no command)               Start guided setup in a terminal
+    (no command)               Choose: run, free up space, or open a saved report
     run [files/directories]    Evaluate mutations and save a browser report
     report                     Open the latest report (no server required)
+    reports                    Browse saved reports with the arrow keys
+    clean                      Preview saved files and choose what to delete
     replay <mutation-id>       Re-test one mutation from the saved snapshot
     doctor                     Check Foundry, Gambit, and compiler setup
     setup                      Download and verify Gambit in your user cache
@@ -20,6 +22,9 @@ const help = `
     blindspot run src/Vault.sol --line 16 --all
     blindspot run --changed origin/main --jobs 2
     blindspot report --serve
+    blindspot reports --scan /path/to/projects
+    blindspot clean --project /path/to/project --dry-run
+    blindspot clean --all --yes
     blindspot replay m-0123456789ab
 
   Run options
@@ -27,6 +32,7 @@ const help = `
     --install-command CMD      Install dependencies once in the original project
     --build-command CMD        Compile during setup, baseline, and mutations
     --test-command CMD         Run tests during baseline and mutations
+    --keep-artifacts=BOOL      Keep replay files (flags: true; guided setup asks)
     --project PATH             Foundry project directory (default: current)
     --limit N                  Maximum mutants to evaluate (default: 50)
     --all                      Evaluate all generated mutations in scope
@@ -48,5 +54,6 @@ const help = `
               3 incomplete evaluation · 130 interrupted
 
   Reports stay in PROJECT/.blindspot/. Mutations run in separate project copies.
+  Cleanup keeps reports unless --all is supplied. Use --yes for noninteractive deletion.
   Full docs: https://github.com/kitanovicd/blindspot#readme
 `

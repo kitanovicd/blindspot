@@ -10,6 +10,7 @@ type Options struct {
 	BuildTimeout                   int
 	Seed                           uint64
 	AllowFFI                       bool
+	KeepArtifacts                  bool
 	Changed                        string
 	InstallCommand                 string
 	BuildCommand                   string

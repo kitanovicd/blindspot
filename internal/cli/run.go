@@ -34,6 +34,7 @@ func (a *app) run(ctx context.Context, args []string) int {
 	f.BoolVar(&jsonOut, "json", false, "JSON results")
 	f.StringVar(&opts.Changed, "changed", "", "Git ref for changed files")
 	f.BoolVar(&interactive, "interactive", false, "Ask for the project and setup commands")
+	f.BoolVar(&opts.KeepArtifacts, "keep-artifacts", true, "Keep replay files; set false to keep only results and failure logs")
 	f.StringVar(&opts.InstallCommand, "install-command", "", "Dependency installation command, run once in the original project")
 	f.StringVar(&opts.BuildCommand, "build-command", "", "Build command, used for setup and each mutation")
 	f.StringVar(&opts.TestCommand, "test-command", "", "Test command, used for the baseline and each mutation")
@@ -49,10 +50,7 @@ func (a *app) run(ctx context.Context, args []string) int {
 			return a.fail(fmt.Errorf("--interactive cannot be combined with --json"))
 		}
 		if err := a.guide(ctx, &opts, &open, f); err != nil {
-			if ctx.Err() != nil {
-				return 130
-			}
-			return a.fail(err)
+			return a.promptError(err)
 		}
 	}
 	if err := opts.Validate(); err != nil {

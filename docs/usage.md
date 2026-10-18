@@ -33,13 +33,14 @@ To uninstall the default installation, remove `~/.local/bin/blindspot` and, opti
 
 ## Guided setup and custom commands
 
-Run `blindspot` or bare `blindspot run` in a terminal. It asks for:
+Run `blindspot` in a terminal to choose between running mutation tests, freeing disk space, and opening a saved report. Arrow keys move through the choices; Enter selects and Esc cancels. Use bare `blindspot run` to go directly to guided setup. It asks for:
 
 1. The Foundry project path.
 2. A dependency installation command, such as `git submodule update --init --recursive`, or `skip`.
 3. A build command, such as `forge build` or `make build`.
 4. A test command, such as `forge test` or `make test`.
 5. The source scope, mutation limit, and whether to open the report.
+6. Whether to keep project copies and mutation files for replay (default: no, remembered per project).
 
 Dependency installation and the initial build run in the original project, before reading compiler configuration or taking a snapshot. These commands can change project files. Dependencies are installed once; the build and test commands run again for the baseline and every mutation inside separate project copies. Setup and builds use `--build-timeout`; each test command uses `--timeout`. Command output is saved in the run's `logs/` directory.
 
@@ -48,6 +49,8 @@ Commands run through `/bin/sh` from the project root. Shell operators, Makefiles
 The project path can contain spaces or start with `~`. Sources, tests, dependencies, and build directories follow the project's Foundry configuration rather than a hardcoded `src/` or `test/` layout. Dependencies must still live inside the selected project root.
 
 Commands are stored in `PROJECT/.blindspot/settings.json` and shown as prompt defaults on the next guided run. Noninteractive runs do not read saved commands. Keep secrets in environment variables rather than command text; commands are also recorded with the results for replay.
+
+When you decline to keep replay files, Blindspot saves the HTML report and JSON results, then removes snapshots, generated mutations, and build caches. Failed and interrupted runs retain diagnostic logs. Cleanup happens only after the results are saved. Runs using flags keep artifacts by default for compatibility; pass `--keep-artifacts=false` to clean them automatically. Use `--keep-artifacts` to retain them explicitly.
 
 Use `--interactive` to request the prompts explicitly, or pass commands directly for CI:
 
@@ -89,6 +92,7 @@ The default sample is up to 50 mutants. `--limit N` sets a maximum; `--all` eval
 | `--install-command CMD` | Dependency installation; runs once in the original project. |
 | `--build-command CMD` | Build during setup, baseline, mutations, and replay; default Forge. |
 | `--test-command CMD` | Tests during baseline, mutations, and replay; default Forge. |
+| `--keep-artifacts=BOOL` | Retain replay files; true for noninteractive runs, guided setup asks. |
 | `--profile NAME` | Foundry profile; `FOUNDRY_PROFILE` or `default`. |
 | `--limit N` | Maximum mutants; 50 by default. |
 | `--all` | Remove the mutant count limit. |
@@ -146,7 +150,31 @@ Each run lives in `PROJECT/.blindspot/runs/RUN_ID/`:
 | `logs/` | Baseline, generation, build, and test logs. |
 | `replay-logs/` | Logs from subsequent replays. |
 
-Ctrl+C stops active processes and preserves completed results without opening the browser, even with `--open`. Use `blindspot report` to open those results later. Pending mutations remain marked as not run. Individual mutants can be replayed, but interrupted batches cannot yet be resumed. Worker copies are cleaned up; saved snapshots remain until you delete their run directories.
+Ctrl+C stops active processes and preserves completed results without opening the browser, even with `--open`. Use `blindspot report` to open those results later. Pending mutations remain marked as not run. Individual mutants can be replayed when their artifacts were retained, but interrupted batches cannot yet be resumed. Worker copies are cleaned up; snapshot retention follows your choice for the run.
+
+## Browse and clean saved runs
+
+```sh
+blindspot reports                        # Browse with ↑/↓ and Enter
+blindspot reports --list                 # Print report paths
+blindspot reports --scan /path/to/projects
+blindspot clean                          # Review sizes, select runs, confirm deletion
+blindspot clean --project /path/to/project --dry-run
+blindspot clean --project /path/to/project --older-than 30d --yes
+blindspot clean --all --yes              # Delete all discovered inactive runs and reports
+```
+
+The report browser lists projects, dates, run status, and surviving mutation counts, newest first. Selecting a report opens its saved HTML file. It also works when the project no longer has its original `foundry.toml`.
+
+The cleanup menu shows run locations and approximate file sizes. Choose whether to remove replay files while preserving reports, or delete entire runs. Use Space to select runs, A to select all, Enter to continue, then confirm. Press Esc to cancel. Terminals without cursor controls use numbered prompts instead.
+
+Without `--all`, cleanup removes snapshots, generated mutations, build artifacts, and full logs; `run.json` and `report.html` remain. `--all` deletes the selected run directories, including reports. `--yes` applies the displayed plan without a prompt; otherwise noninteractive commands only preview. `--dry-run` never deletes. `--run ID` restricts cleanup to one run and requires `--project`. `--older-than` accepts durations such as `30d` and `24h`.
+
+Cleanup never removes project source files, `.blindspot/settings.json`, the project index, or installed tools. Runs and replays lock their project; cleanup skips busy projects and checks again before deleting. Legacy runs still marked `running` are retained because their activity cannot be verified. Deleting the latest run updates the latest-report pointer. Cleaned reports remain readable but no longer offer replay.
+
+New runs register their project path in a private local index: `~/Library/Application Support/blindspot/projects` on macOS, or `$XDG_CONFIG_HOME/blindspot/projects` (usually `~/.config/blindspot/projects`) on Linux. Set `BLINDSPOT_STATE_DIR` to relocate this index. No index data is uploaded.
+
+By default, discovery includes indexed projects and scans your home folder, plus the current directory when outside your home. It skips hidden folders, `node_modules`, `Library`, `Applications`, and symlinks, and reports inaccessible locations. Use `--scan PATH` to search an external drive or a skipped folder explicitly; repeat it for multiple roots. Explicit `--scan` roots replace the default search, while `--project PATH` selects exactly one project. This avoids traversing the entire filesystem and requires no Forge installation just to browse or clean saved files.
 
 ## Replay a mutation
 

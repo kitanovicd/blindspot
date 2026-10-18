@@ -8,6 +8,7 @@ import (
 
 	"github.com/kitanovicd/blindspot/internal/mutation"
 	"github.com/kitanovicd/blindspot/internal/report"
+	"github.com/kitanovicd/blindspot/internal/storage"
 )
 
 func (a *app) report(ctx context.Context, args []string) int {
@@ -27,7 +28,16 @@ func (a *app) report(ctx context.Context, args []string) int {
 	if *port < 0 || *port > 65535 {
 		return a.fail(fmt.Errorf("port must be between 0 and 65535"))
 	}
-	run, dir, err := mutation.LoadRun(*project, *id)
+	root, err := mutation.ProjectRoot(*project)
+	if err != nil {
+		return a.fail(err)
+	}
+	unlock, err := storage.LockProject(root, false)
+	if err != nil {
+		return a.fail(err)
+	}
+	defer unlock()
+	run, dir, err := mutation.LoadRun(root, *id)
 	if err != nil {
 		return a.fail(err)
 	}

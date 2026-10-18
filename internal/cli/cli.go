@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 )
 
 type app struct {
+	input              *bufio.Reader
 	out, errOut        io.Writer
 	outStyle, errStyle terminal.Style
 	runner             *mutation.Runner
@@ -26,13 +28,14 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		stderr = io.Discard
 	}
 	a := &app{
-		out: stdout, errOut: stderr,
+		input: bufio.NewReader(os.Stdin),
+		out:   stdout, errOut: stderr,
 		outStyle: terminal.For(stdout), errStyle: terminal.For(stderr),
 		runner: mutation.NewRunner(stderr),
 	}
 	if len(args) == 0 {
 		if terminal.IsTerminal(os.Stdin) {
-			return a.run(ctx, []string{"--interactive"})
+			return a.menu(ctx)
 		}
 		return a.text(help)
 	}
@@ -50,6 +53,10 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return mutation.ForwardForge(ctx, args[1:], os.Stdin, a.out, a.errOut)
 	case "report":
 		return a.report(ctx, args[1:])
+	case "reports":
+		return a.reports(ctx, args[1:])
+	case "clean":
+		return a.clean(ctx, args[1:])
 	case "replay":
 		return a.replay(ctx, args[1:])
 	case "doctor":

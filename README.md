@@ -29,13 +29,15 @@ Prefer Go? Use `go install github.com/kitanovicd/blindspot@latest` with Go 1.23+
 
 ## Run
 
-Start the guided setup:
+Open the menu:
 
 ```sh
 blindspot
 ```
 
-It asks for your project path, dependency installation command, build command, and test command. Use Forge directly, a Makefile, or a script—for example, `make deps`, `make build`, and `make test`. Then choose the files and mutation limit.
+Choose **Run Blindspot**, **Free up space**, or **Open a saved report**. Use the arrow keys and Enter to navigate.
+
+Starting a run asks for your project path, dependency installation command, build command, and test command. Use Forge directly, a Makefile, or a script—for example, `make deps`, `make build`, and `make test`. Then choose the files, mutation limit, and whether to keep replay files. Reports are always kept.
 
 Dependencies and the initial build run in your project, so a fresh clone works too. The baseline and each mutation use the same build and test commands in separate copies. Commands are saved locally and offered as defaults next time.
 
@@ -85,7 +87,19 @@ blindspot replay MUTATION_ID --project /path/to/project --run RUN_ID
 
 Runs are saved in `PROJECT/.blindspot/`. Add `.blindspot/` to your project's `.gitignore`: snapshots and logs may contain local configuration or secrets. HTML reports include source and local paths, so review them before sharing.
 
-Replay uses the saved project snapshot. Start a new run to evaluate changed code or tests.
+Replay requires keeping the project snapshot and mutation files. Start a new run to evaluate changed code or tests.
+
+## Saved reports and cleanup
+
+```sh
+blindspot reports                  # Choose a report with the arrow keys
+blindspot clean                    # Review sizes and select files to remove
+blindspot clean --all --yes         # Delete all discovered inactive runs and reports
+```
+
+Cleanup keeps reports by default. Add `--project /path/to/project` to limit it to one project, or `--dry-run` to preview without deleting. Active projects are skipped. Project source files and setup settings are preserved.
+
+Blindspot finds runs in registered projects and scans your home directory, skipping hidden, system, and dependency folders. Use `--scan /path/to/projects` with `reports` or `clean` to search another location. See the [usage guide](docs/usage.md#browse-and-clean-saved-runs) for details.
 
 See the **[usage guide](docs/usage.md)** for flags, timeouts, FFI, CI, exporting reports, and compatibility. Use `blindspot COMMAND --help` for command options.
 

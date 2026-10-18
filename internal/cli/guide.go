@@ -1,62 +1,30 @@
 package cli
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/kitanovicd/blindspot/internal/mutation"
+	"github.com/kitanovicd/blindspot/internal/storage"
 	"github.com/kitanovicd/blindspot/internal/terminal"
 	"github.com/kitanovicd/blindspot/internal/toolchain"
 )
 
 type projectSettings struct {
-	Install string `json:"install_command"`
-	Build   string `json:"build_command"`
-	Test    string `json:"test_command"`
+	Install       string `json:"install_command"`
+	Build         string `json:"build_command"`
+	Test          string `json:"test_command"`
+	KeepArtifacts *bool  `json:"keep_artifacts,omitempty"`
 }
 
 func (a *app) guide(ctx context.Context, opts *mutation.Options, open *bool, flags *flag.FlagSet) error {
-	reader := bufio.NewReader(os.Stdin)
-	ask := func(label, fallback string) (string, error) {
-		fmt.Fprintf(a.out, "\n  %s", a.outStyle.Text(terminal.Emphasis, label))
-		if fallback != "" {
-			fmt.Fprintf(a.out, " [%s]", fallback)
-		}
-		fmt.Fprint(a.out, "\n  > ")
-		type answer struct {
-			line string
-			err  error
-		}
-		answers := make(chan answer, 1)
-		go func() {
-			line, err := reader.ReadString('\n')
-			answers <- answer{line, err}
-		}()
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		case result := <-answers:
-			if result.err != nil {
-				if result.err == io.EOF {
-					return "", fmt.Errorf("setup cancelled: input closed")
-				}
-				return "", result.err
-			}
-			line := strings.TrimSpace(result.line)
-			if line == "" {
-				line = fallback
-			}
-			return line, nil
-		}
-	}
+	ask := func(label, fallback string) (string, error) { return a.ask(ctx, label, fallback) }
 	fmt.Fprintf(a.out, "\n  %s\n  Let's set up your Foundry project. Press Enter to use a default.\n", a.outStyle.Text(terminal.Heading, "BLINDSPOT"))
 	for {
 		path, err := ask("Where is the project?", opts.Project)
@@ -163,14 +131,24 @@ func (a *app) guide(ctx context.Context, opts *mutation.Options, open *bool, fla
 			fmt.Fprintln(a.out, "  Enter yes or no.")
 		}
 	}
+	if !provided["keep-artifacts"] {
+		keep := false
+		if settings.KeepArtifacts != nil {
+			keep = *settings.KeepArtifacts
+		}
+		opts.KeepArtifacts, err = a.confirm(ctx, "Keep project copies and mutation files for replay? Reports are always kept.", keep)
+		if err != nil {
+			return err
+		}
+	}
+	settings.KeepArtifacts = &opts.KeepArtifacts
 	if err := opts.Validate(); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 		return err
 	}
-	data, _ := json.MarshalIndent(settings, "", "  ")
-	if err := os.WriteFile(file, data, 0600); err != nil {
+	if err := storage.WriteJSON(file, settings); err != nil {
 		return err
 	}
 	fmt.Fprintln(a.out, "\n  Commands saved for next time in .blindspot/settings.json.")

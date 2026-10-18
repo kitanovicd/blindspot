@@ -90,7 +90,7 @@ async function copyReplay(button,m){
 function mutationView(m){
   const el=node('article','mutation'),head=node('div','mutation-head');
   head.append(node('span','',labels[m.status]||m.status),node('span','muted',m.reason||''));
-  const replay=node('button','','Copy replay');replay.onclick=()=>copyReplay(replay,m);head.append(replay);el.append(head);
+  if(!run.artifacts_removed){const replay=node('button','','Copy replay');replay.onclick=()=>copyReplay(replay,m);head.append(replay);}el.append(head);
   const diff=node('div','diff');
   for(const [sign,text,cls] of [['−',m.original,'removed'],['+',m.replacement,'added']]){
     const row=node('div','diff-row '+cls);row.append(node('span','diff-sign',sign),node('span','',text||'(empty)'));diff.append(row);
@@ -133,6 +133,7 @@ function render(){
 }
 const table=node('table');
 const rows=[['Run',run.id],['Project',run.project],['Scope',run.limit?'Sample of up to '+run.limit+' mutants':'All generated mutations in selected files'],['Baseline',run.baseline.status+' · '+run.baseline.tests+' tests'],['Profile',run.profile],['Seed',String(run.seed)],['Started',new Date(run.started_at).toLocaleString()],['Elapsed',duration(run.duration_ms)]];
+if(run.artifacts_removed)rows.push(['Replay','Unavailable — replay files were cleaned. Reports and results are preserved.']);
 if(run.baseline.build_duration_ms)rows.splice(4,0,['Baseline build',duration(run.baseline.build_duration_ms)],['Baseline tests',duration(run.baseline.test_duration_ms)]);
 for(const [key,value] of rows){const tr=node('tr');tr.append(node('th','',key),node('td','',value));table.append(tr);}
 $('run-info').append(table,node('p','','Source files in scope'),node('pre','',Object.keys(run.files).sort().join('\n')));

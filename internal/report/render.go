@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -18,5 +19,17 @@ func Write(file string, run *Run) error {
 	}
 	// encoding/json escapes HTML delimiters, preventing source code from closing the script tag.
 	html := strings.Replace(reportTemplate, "__RUN_DATA__", string(data), 1)
-	return os.WriteFile(file, []byte(html), 0600)
+	f, err := os.CreateTemp(filepath.Dir(file), ".report-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.WriteString(html); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), file)
 }

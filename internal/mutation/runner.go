@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/kitanovicd/blindspot/internal/report"
+	"github.com/kitanovicd/blindspot/internal/storage"
 	"github.com/kitanovicd/blindspot/internal/terminal"
 	"github.com/kitanovicd/blindspot/internal/toolchain"
 )
@@ -50,6 +51,14 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	root, err := ProjectRoot(opts.Project)
 	if err != nil {
 		return nil, "", err
+	}
+	unlock, err := storage.LockProject(root, false)
+	if err != nil {
+		return nil, "", err
+	}
+	defer unlock()
+	if err := storage.Remember(root); err != nil {
+		r.logf("Could not update local project index: %v", err)
 	}
 	start := time.Now()
 	id := start.UTC().Format("20060102-150405") + "-" + digest([]byte(fmt.Sprint(start.UnixNano())))[:6]
@@ -90,25 +99,26 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	}
 	ver, _ := exec.Command("forge", "--version").Output()
 	run := &report.Run{
-		SchemaVersion:  1,
-		ID:             id,
-		Project:        root,
-		StartedAt:      start.UTC(),
-		State:          "running",
-		Seed:           opts.Seed,
-		Limit:          opts.Limit,
-		Scope:          strings.Join(files, ", "),
-		Profile:        opts.Profile,
-		ForgeVersion:   strings.TrimSpace(string(ver)),
-		Gambit:         gambit,
-		Solc:           solc,
-		TimeoutSeconds: opts.Timeout,
-		InstallCommand: opts.InstallCommand,
-		BuildCommand:   opts.BuildCommand,
-		TestCommand:    opts.TestCommand,
-		Files:          map[string]string{},
-		Mutations:      []report.Mutation{},
-		Errors:         []string{},
+		SchemaVersion:    1,
+		ID:               id,
+		Project:          root,
+		StartedAt:        start.UTC(),
+		State:            "running",
+		ManagedLifecycle: true,
+		Seed:             opts.Seed,
+		Limit:            opts.Limit,
+		Scope:            strings.Join(files, ", "),
+		Profile:          opts.Profile,
+		ForgeVersion:     strings.TrimSpace(string(ver)),
+		Gambit:           gambit,
+		Solc:             solc,
+		TimeoutSeconds:   opts.Timeout,
+		InstallCommand:   opts.InstallCommand,
+		BuildCommand:     opts.BuildCommand,
+		TestCommand:      opts.TestCommand,
+		Files:            map[string]string{},
+		Mutations:        []report.Mutation{},
+		Errors:           []string{},
 	}
 	run.Executable, _ = os.Executable()
 	run.FFI = cfg.FFI
@@ -116,7 +126,16 @@ func (r *Runner) Run(ctx context.Context, opts Options) (*report.Run, string, er
 	finalize := func() error {
 		run.DurationMS = time.Since(start).Milliseconds()
 		run.Refresh()
-		return saveRun(root, runDir, run)
+		if err := saveRun(root, runDir, run); err != nil {
+			return err
+		}
+		if !opts.KeepArtifacts && run.State != "running" {
+			if err := storage.Prune(runDir, run, run.State != "completed"); err != nil {
+				return fmt.Errorf("could not remove replay files: %w", err)
+			}
+			r.logf("Storage  Replay files removed; report and JSON kept")
+		}
+		return nil
 	}
 	r.logf("Project  %s", root)
 	r.logf("Profile  %s · %d source file(s) · seed %d", opts.Profile, len(files), opts.Seed)
